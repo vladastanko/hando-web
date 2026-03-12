@@ -25,10 +25,12 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
       return;
     }
 
-    if (data.user) {
-      setMessage('Registracija uspešna. Ako je uključena potvrda email-a, proveri inbox.');
+    if (data.user && !data.session) {
+      setMessage('Account created. Check your inbox if email confirmation is enabled.');
+    } else if (data.user) {
+      onAuthSuccess({ id: data.user.id, email: data.user.email });
     } else {
-      setMessage('Registracija završena.');
+      setMessage('Registration completed.');
     }
 
     setLoading(false);
@@ -57,60 +59,73 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
   };
 
   return (
-    <div className="auth-wrap">
+    <div className="auth-shell">
       <div className="auth-card">
-        <h1 className="brand">Hando</h1>
-        <p className="brand-sub">
-          Find trusted local help or earn money with short local jobs.
-        </p>
+        <div className="auth-logo-wrap">
+          <div className="auth-logo-icon">🤝</div>
+          <h1 className="auth-logo-text">Hando</h1>
+          <p className="auth-tagline">Find local help. Fast. Keep the backend, upgrade the experience.</p>
+        </div>
 
-        <div className="mode-switch">
+        <div className="auth-tabs">
           <button
-            className={mode === 'login' ? 'active' : ''}
+            className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
             onClick={() => setMode('login')}
           >
-            Login
+            Sign in
           </button>
           <button
-            className={mode === 'signup' ? 'active' : ''}
+            className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
             onClick={() => setMode('signup')}
           >
-            Sign up
+            Register
           </button>
         </div>
 
         {mode === 'signup' && (
-          <input
-            className="input"
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
+          <div className="form-group">
+            <label className="form-label" htmlFor="signup-full-name">Full name</label>
+            <input
+              id="signup-full-name"
+              className="input"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
         )}
 
-        <input
-          className="input"
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="form-group">
+          <label className="form-label" htmlFor="auth-email">Email</label>
+          <input
+            id="auth-email"
+            className="input"
+            placeholder="your@email.com"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-        <input
-          className="input"
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="form-group">
+          <label className="form-label" htmlFor="auth-password">Password</label>
+          <input
+            id="auth-password"
+            className="input"
+            placeholder="••••••••"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
         {mode === 'login' ? (
-          <button className="btn" onClick={handleLogin} disabled={loading}>
-            {loading ? 'Loading...' : 'Login'}
+          <button className="btn btn-full" onClick={handleLogin} disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         ) : (
-          <button className="btn" onClick={handleSignup} disabled={loading}>
-            {loading ? 'Loading...' : 'Create account'}
+          <button className="btn btn-full" onClick={handleSignup} disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         )}
 

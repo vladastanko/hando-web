@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { auth, credits, jobs } from './lib/supabase';
+import { auth, credits, jobs, profiles } from './lib/supabase';
+import type { Category, Job, Profile } from './types';
 import BottomNav from './components/BottomNav';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -11,46 +12,48 @@ type SessionUser = {
   email?: string;
 };
 
-type JobItem = {
-  id: string;
-  title: string;
-  description: string;
-  city: string;
-  address: string;
-  pay_per_worker: number;
-  crew_size: number;
-  accepted_workers: number;
-  status: string;
-  scheduled_date: string;
-};
-
-type Category = {
-  id: string;
-  name: string;
-};
-
 type TabKey = 'home' | 'post' | 'my-jobs' | 'profile';
+
+type Flash = {
+  type: 'success' | 'error' | 'info';
+  text: string;
+} | null;
 
 export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
-  const [message, setMessage] = useState('');
+  const [flash, setFlash] = useState<Flash>(null);
 
-  const [jobsList, setJobsList] = useState<JobItem[]>([]);
-  const [myJobs, setMyJobs] = useState<JobItem[]>([]);
+  const [jobsList, setJobsList] = useState<Job[]>([]);
+  const [myJobs, setMyJobs] = useState<Job[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editBio, setEditBio] = useState('');
 
   useEffect(() => {
-    checkSession();
+    void checkSession();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      initializeAppData(user.id);
-    }
+    if (!user) return;
+    void initializeAppData(user.id);
   }, [user]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timeout = window.setTimeout(() => setFlash(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [flash]);
+
+  const openJobsCount = useMemo(
+    () => jobsList.filter((job) => job.status === 'open').length,
+    [jobsList],
+  );
 
   const checkSession = async () => {
     const { session } = await auth.getSession();
@@ -69,6 +72,7 @@ export default function App() {
       loadCategories(),
       loadCredits(userId),
       loadMyJobs(userId),
+      loadProfile(userId),
     ]);
   };
 
@@ -77,27 +81,25 @@ export default function App() {
     const res = await jobs.getAll({ status: 'open' });
 
     if (res.error) {
-      setMessage(`Jobs error: ${res.error}`);
+      setFlash({ type: 'error', text: `Jobs error: ${res.error}` });
       setJobsLoading(false);
       return;
     }
 
-    setJobsList((res.data as JobItem[]) || []);
+    setJobsList(res.data || []);
     setJobsLoading(false);
   };
 
   const loadMyJobs = async (userId: string) => {
     const res = await jobs.getByPoster(userId);
-    if (!res.error) {
-      setMyJobs((res.data as JobItem[]) || []);
-    }
+    if (res.error) return;
+    setMyJobs(res.data || []);
   };
 
   const loadCategories = async () => {
     const res = await jobs.getCategories();
-    if (!res.error) {
-      setCategories((res.data as Category[]) || []);
-    }
+    if (res.error) return;
+    setCategories(res.data || []);
   };
 
   const loadCredits = async (userId: string) => {
@@ -105,13 +107,24 @@ export default function App() {
     setCreditBalance(balance);
   };
 
+  const loadProfile = async (userId: string) => {
+    const res = await profiles.get(userId);
+    if (res.error || !res.data) return;
+
+    setProfile(res.data);
+    setEditName(res.data.full_name || '');
+    setEditCity(res.data.city || '');
+    setEditBio(res.data.bio || '');
+  };
+
   const handleLogout = async () => {
     await auth.signOut();
     setUser(null);
+    setProfile(null);
     setJobsList([]);
     setMyJobs([]);
     setCreditBalance(0);
-    setMessage('');
+    setFlash(null);
     setActiveTab('home');
   };
 
@@ -122,9 +135,36 @@ export default function App() {
       loadJobs(),
       loadMyJobs(user.id),
       loadCredits(user.id),
+      loadProfile(user.id),
     ]);
 
+    setFlash({ type: 'success', text: 'Job posted successfully.' });
     setActiveTab('home');
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    if (!editName.trim()) {
+      setFlash({ type: 'error', text: 'Full name is required.' });
+      return;
+    }
+
+    setProfileSaving(true);
+    const res = await profiles.update(user.id, {
+      full_name: editName.trim(),
+      city: editCity.trim(),
+      bio: editBio.trim(),
+    });
+
+    if (res.error || !res.data) {
+      setFlash({ type: 'error', text: res.error || 'Profile update failed.' });
+      setProfileSaving(false);
+      return;
+    }
+
+    setProfile(res.data);
+    setFlash({ type: 'success', text: 'Profile updated.' });
+    setProfileSaving(false);
   };
 
   if (!user) {
@@ -136,129 +176,249 @@ export default function App() {
       <div className="topbar">
         <div className="topbar-inner">
           <div>
-            <h1 className="topbar-title">Hando</h1>
-            <div className="topbar-sub">Live marketplace MVP connected to Supabase</div>
+            <div className="topbar-brand">🤝 Hando</div>
+            <div className="topbar-sub">Local job marketplace connected to your live Supabase backend</div>
           </div>
 
           <div className="topbar-right">
-            <div className="credit-pill">Credits: {creditBalance}</div>
-            <div className="user-pill">{user.email}</div>
-            <button className="btn-secondary" onClick={handleLogout}>
-              Logout
+            <div className="credit-badge">🪙 {creditBalance} credits</div>
+            <div className="user-badge">{profile?.full_name || user.email || 'User'}</div>
+            <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
+              Sign out
             </button>
           </div>
         </div>
       </div>
 
-      <div className="container">
-        {message && <div className="message" style={{ marginBottom: 16 }}>{message}</div>}
+      <main className="container app-content">
+        {flash && <div className={`alert alert-${flash.type}`}>{flash.text}</div>}
 
         {activeTab === 'home' && (
-          <div className="grid">
-            <div>
-              <HomeScreen jobs={jobsList} loading={jobsLoading} onRefresh={loadJobs} />
-            </div>
-
-            <div>
-              <div className="panel">
-                <h2>Quick overview</h2>
-                <div className="kpi-row">
-                  <div className="kpi">
-                    <div className="kpi-label">Open jobs</div>
-                    <div className="kpi-value">{jobsList.length}</div>
-                  </div>
-                  <div className="kpi">
-                    <div className="kpi-label">My jobs</div>
-                    <div className="kpi-value">{myJobs.length}</div>
-                  </div>
-                  <div className="kpi">
-                    <div className="kpi-label">Credits</div>
-                    <div className="kpi-value">{creditBalance}</div>
-                  </div>
-                </div>
-
-                <div className="panel-muted">
-                  Next step is to add apply flow, applicant review, notifications, and profile verification.
-                </div>
-              </div>
-            </div>
+          <div className="tab-screen active">
+            <HomeScreen
+              jobs={jobsList}
+              loading={jobsLoading}
+              onRefresh={loadJobs}
+              categories={categories}
+              userName={profile?.full_name || user.email || 'Friend'}
+              stats={{
+                completedJobs: profile?.completed_jobs_worker || 0,
+                rating: profile?.rating_as_worker || 0,
+                credits: creditBalance,
+                openJobs: openJobsCount,
+                myJobs: myJobs.length,
+              }}
+              onOpenPost={() => setActiveTab('post')}
+            />
           </div>
         )}
 
         {activeTab === 'post' && (
-          <div className="grid">
+          <div className="grid-layout">
             <div>
               <PostJobScreen
                 categories={categories}
                 onCreated={afterJobCreated}
-                onMessage={setMessage}
+                onMessage={(text, type = 'info') => setFlash({ text, type })}
               />
             </div>
 
-            <div>
-              <div className="panel">
-                <h2>Posting rules</h2>
-                <div className="panel-muted">
-                  Posting a job currently costs 10 credits. Crew size and payment are stored in the live database.
-                </div>
-                <div className="profile-box">
-                  <div className="profile-line">Use a clear title and exact location.</div>
-                  <div className="profile-line">Describe what kind of help you need.</div>
-                  <div className="profile-line">Add realistic pay per worker.</div>
-                </div>
+            <aside className="panel side-panel">
+              <h2>Posting tips</h2>
+              <p className="panel-copy">
+                Backend ostaje isti: job ide kroz Supabase RPC i troši 10 kredita atomski,
+                baš kao u tvojoj postojećoj logici.
+              </p>
+              <div className="rule-list">
+                <div className="rule-item">Napiši jasan naslov i šta tačno treba da se uradi.</div>
+                <div className="rule-item">Unesi realnu cenu po radniku i tačnu adresu.</div>
+                <div className="rule-item">Crew size i datum se upisuju direktno u bazu.</div>
               </div>
-            </div>
+            </aside>
           </div>
         )}
 
         {activeTab === 'my-jobs' && (
-          <div className="panel">
-            <h2>My posted jobs</h2>
-            <div className="panel-muted">
-              Jobs you created with your current account.
-            </div>
-
-            {myJobs.length === 0 ? (
-              <div className="empty-state">You have not posted any jobs yet.</div>
-            ) : (
-              <div className="job-list">
-                {myJobs.map((job) => (
-                  <div className="job-card" key={job.id}>
-                    <div className="badge-row">
-                      <span className="badge">{job.status}</span>
-                      <span className="badge">{job.city}</span>
-                    </div>
-                    <h3>{job.title}</h3>
-                    <div>{job.description}</div>
-                    <div className="job-meta">
-                      <div><strong>Address:</strong> {job.address}</div>
-                      <div><strong>Pay:</strong> {job.pay_per_worker} RSD</div>
-                      <div><strong>Crew:</strong> {job.accepted_workers}/{job.crew_size}</div>
-                      <div><strong>Date:</strong> {new Date(job.scheduled_date).toLocaleString()}</div>
-                    </div>
-                  </div>
-                ))}
+          <div className="grid-layout">
+            <section className="panel">
+              <div className="section-header">
+                <div>
+                  <h2>My posted jobs</h2>
+                  <p className="panel-copy">Sve što si kreirao sa trenutnim nalogom.</p>
+                </div>
+                <button className="btn btn-outline btn-sm" onClick={() => user && loadMyJobs(user.id)}>
+                  Refresh
+                </button>
               </div>
-            )}
+
+              {myJobs.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">📋</div>
+                  <div className="empty-title">No jobs posted yet</div>
+                  <p className="panel-copy">Post your first task and it will appear here.</p>
+                </div>
+              ) : (
+                <div className="job-list">
+                  {myJobs.map((job) => {
+                    const spotsLeft = Math.max(job.crew_size - job.accepted_workers, 0);
+                    return (
+                      <article className="job-card" key={job.id}>
+                        <div className="job-card-header">
+                          <div>
+                            <div className="job-category-chip">🗂 {job.city}</div>
+                            <h3 className="job-title">{job.title}</h3>
+                          </div>
+                          <span className={`badge badge-${job.status === 'open' ? 'open' : 'pending'}`}>
+                            {job.status}
+                          </span>
+                        </div>
+
+                        <p className="job-description">{job.description}</p>
+
+                        <div className="job-meta-row">
+                          <span>📍 {job.address}</span>
+                          <span>📅 {formatDate(job.scheduled_date)}</span>
+                          <span>👥 {spotsLeft} spots left</span>
+                        </div>
+
+                        <div className="job-footer-row">
+                          <div className="job-pay">{formatCurrency(job.pay_per_worker)}<small> / worker</small></div>
+                          <div className="crew-inline">
+                            <span>{job.accepted_workers}/{job.crew_size} accepted</span>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <aside className="panel side-panel">
+              <h2>Summary</h2>
+              <div className="stats-grid compact">
+                <div className="stat-card">
+                  <div className="stat-value">{myJobs.length}</div>
+                  <div className="stat-label">Posted</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{myJobs.filter((job) => job.status === 'open').length}</div>
+                  <div className="stat-label">Open</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{myJobs.reduce((sum, job) => sum + job.accepted_workers, 0)}</div>
+                  <div className="stat-label">Workers</div>
+                </div>
+              </div>
+            </aside>
           </div>
         )}
 
         {activeTab === 'profile' && (
-          <div className="panel">
-            <h2>Profile</h2>
-            <div className="panel-muted">Basic live account data from your current session.</div>
+          <div className="grid-layout">
+            <section className="panel">
+              <div className="profile-hero">
+                <div className="avatar-xl">{(profile?.full_name || user.email || '?').charAt(0).toUpperCase()}</div>
+                <div>
+                  <h2>{profile?.full_name || 'Profile'}</h2>
+                  <p className="panel-copy">{profile?.city || 'No city added yet'}</p>
+                  <div className="badge-row">
+                    <span className={`badge badge-${profile?.verification_status === 'verified' ? 'accepted' : 'pending'}`}>
+                      {profile?.verification_status || 'unverified'}
+                    </span>
+                    {profile?.is_email_verified && <span className="badge badge-open">email verified</span>}
+                    {profile?.is_phone_verified && <span className="badge badge-accepted">phone verified</span>}
+                  </div>
+                </div>
+              </div>
 
-            <div className="profile-box">
-              <div className="profile-line"><strong>Email:</strong> {user.email}</div>
-              <div className="profile-line"><strong>User ID:</strong> {user.id}</div>
-              <div className="profile-line"><strong>Credits:</strong> {creditBalance}</div>
-              <div className="profile-line"><strong>Status:</strong> Logged in</div>
-            </div>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-value">{profile?.completed_jobs_worker || 0}</div>
+                  <div className="stat-label">Jobs done</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—'}</div>
+                  <div className="stat-label">Worker rating</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{creditBalance}</div>
+                  <div className="stat-label">Credits</div>
+                </div>
+              </div>
+
+              <div className="profile-form-grid">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="edit-name">Full name</label>
+                  <input
+                    id="edit-name"
+                    className="input"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="edit-city">City</label>
+                  <input
+                    id="edit-city"
+                    className="input"
+                    value={editCity}
+                    onChange={(event) => setEditCity(event.target.value)}
+                    placeholder="Belgrade"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-bio">Bio</label>
+                <textarea
+                  id="edit-bio"
+                  className="textarea"
+                  value={editBio}
+                  onChange={(event) => setEditBio(event.target.value)}
+                  placeholder="Tell people what kind of jobs you usually do"
+                />
+              </div>
+
+              <button className="btn" onClick={saveProfile} disabled={profileSaving}>
+                {profileSaving ? 'Saving...' : 'Save changes'}
+              </button>
+            </section>
+
+            <aside className="panel side-panel">
+              <h2>Account details</h2>
+              <div className="rule-list">
+                <div className="rule-item"><strong>Email:</strong> {profile?.email || user.email || '—'}</div>
+                <div className="rule-item"><strong>Role:</strong> {profile?.role || 'both'}</div>
+                <div className="rule-item"><strong>Poster rating:</strong> {profile?.rating_as_poster ? profile.rating_as_poster.toFixed(1) : '—'}</div>
+                <div className="rule-item"><strong>Completed as poster:</strong> {profile?.completed_jobs_poster || 0}</div>
+              </div>
+            </aside>
           </div>
         )}
-      </div>
+      </main>
 
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('sr-RS', {
+    style: 'currency',
+    currency: 'RSD',
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function formatDate(value: string) {
+  if (!value) return 'No date';
+  const date = new Date(value);
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
