@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { auth, jobs } from './lib/supabase';
+import './App.css';
+import { auth, credits, jobs } from './lib/supabase';
+import BottomNav from './components/BottomNav';
+import AuthScreen from './screens/AuthScreen';
+import HomeScreen from './screens/HomeScreen';
+import PostJobScreen from './screens/PostJobScreen';
 
 type SessionUser = {
   id: string;
@@ -24,30 +29,18 @@ type Category = {
   name: string;
 };
 
+type TabKey = 'home' | 'post' | 'my-jobs' | 'profile';
+
 export default function App() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [user, setUser] = useState<SessionUser | null>(null);
-
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
+  const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const [jobsList, setJobsList] = useState<JobItem[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
-
+  const [myJobs, setMyJobs] = useState<JobItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [city, setCity] = useState('');
-  const [address, setAddress] = useState('');
-  const [payPerWorker, setPayPerWorker] = useState('');
-  const [crewSize, setCrewSize] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
 
   useEffect(() => {
     checkSession();
@@ -55,18 +48,12 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
-      loadJobs();
-      loadCategories();
+      initializeAppData(user.id);
     }
   }, [user]);
 
   const checkSession = async () => {
-    const { session, error } = await auth.getSession();
-
-    if (error) {
-      setMessage(`Session error: ${error.message}`);
-      return;
-    }
+    const { session } = await auth.getSession();
 
     if (session?.user) {
       setUser({
@@ -76,9 +63,17 @@ export default function App() {
     }
   };
 
+  const initializeAppData = async (userId: string) => {
+    await Promise.all([
+      loadJobs(),
+      loadCategories(),
+      loadCredits(userId),
+      loadMyJobs(userId),
+    ]);
+  };
+
   const loadJobs = async () => {
     setJobsLoading(true);
-
     const res = await jobs.getAll({ status: 'open' });
 
     if (res.error) {
@@ -91,6 +86,13 @@ export default function App() {
     setJobsLoading(false);
   };
 
+  const loadMyJobs = async (userId: string) => {
+    const res = await jobs.getByPoster(userId);
+    if (!res.error) {
+      setMyJobs((res.data as JobItem[]) || []);
+    }
+  };
+
   const loadCategories = async () => {
     const res = await jobs.getCategories();
     if (!res.error) {
@@ -98,399 +100,165 @@ export default function App() {
     }
   };
 
-  const handleSignup = async () => {
-    setLoading(true);
-    setMessage('');
-
-    const { data, error } = await auth.signUp(email, password, fullName);
-
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      setMessage('Uspešna registracija. Proveri email ako je potrebna potvrda.');
-    } else {
-      setMessage('Registracija završena.');
-    }
-
-    setLoading(false);
-  };
-
-  const handleLogin = async () => {
-    setLoading(true);
-    setMessage('');
-
-    const { data, error } = await auth.signIn(email, password);
-
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      setUser({
-        id: data.user.id,
-        email: data.user.email,
-      });
-      setMessage('Uspešan login.');
-    }
-
-    setLoading(false);
+  const loadCredits = async (userId: string) => {
+    const balance = await credits.getBalance(userId);
+    setCreditBalance(balance);
   };
 
   const handleLogout = async () => {
-    setLoading(true);
-    setMessage('');
-
-    const { error } = await auth.signOut();
-
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-      return;
-    }
-
+    await auth.signOut();
     setUser(null);
     setJobsList([]);
-    setMessage('Izlogovan si.');
-    setLoading(false);
-  };
-
-  const handleCreateJob = async () => {
-    setLoading(true);
+    setMyJobs([]);
+    setCreditBalance(0);
     setMessage('');
-
-    const res = await jobs.create({
-      title,
-      description,
-      category_id: categoryId,
-      address,
-      city,
-      lat: 44.8176,
-      lng: 20.4633,
-      scheduled_date: scheduledDate,
-      duration_hours: 3,
-      pay_per_worker: Number(payPerWorker),
-      crew_size: Number(crewSize),
-    });
-
-    if (res.error) {
-      setMessage(`Create job error: ${res.error}`);
-      setLoading(false);
-      return;
-    }
-
-    setMessage('Posao je uspešno kreiran.');
-
-    setTitle('');
-    setDescription('');
-    setCategoryId('');
-    setCity('');
-    setAddress('');
-    setPayPerWorker('');
-    setCrewSize('');
-    setScheduledDate('');
-
-    await loadJobs();
-    setLoading(false);
+    setActiveTab('home');
   };
 
-  if (user) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.container}>
-          <div style={styles.headerCard}>
-            <h1>Hando</h1>
-            <p>Ulogovan korisnik:</p>
-            <p><strong>{user.email}</strong></p>
-            <p style={{ opacity: 0.7 }}>User ID: {user.id}</p>
+  const afterJobCreated = async () => {
+    if (!user) return;
 
-            <div style={styles.headerButtons}>
-              <button style={styles.button} onClick={loadJobs} disabled={jobsLoading}>
-                {jobsLoading ? 'Loading jobs...' : 'Refresh jobs'}
-              </button>
+    await Promise.all([
+      loadJobs(),
+      loadMyJobs(user.id),
+      loadCredits(user.id),
+    ]);
 
-              <button style={styles.logoutButton} onClick={handleLogout} disabled={loading}>
-                {loading ? 'Loading...' : 'Logout'}
-              </button>
-            </div>
+    setActiveTab('home');
+  };
 
-            {message && <p style={styles.message}>{message}</p>}
+  if (!user) {
+    return <AuthScreen onAuthSuccess={setUser} />;
+  }
+
+  return (
+    <div className="app-shell">
+      <div className="topbar">
+        <div className="topbar-inner">
+          <div>
+            <h1 className="topbar-title">Hando</h1>
+            <div className="topbar-sub">Live marketplace MVP connected to Supabase</div>
           </div>
 
-          <div style={styles.formCard}>
-            <h2>Post new job</h2>
-
-            <input
-              style={styles.input}
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-
-            <textarea
-              style={styles.textarea}
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <select
-              style={styles.input}
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              <option value="">Select category</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              style={styles.input}
-              placeholder="City"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              placeholder="Address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              placeholder="Pay per worker (RSD)"
-              type="number"
-              value={payPerWorker}
-              onChange={(e) => setPayPerWorker(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              placeholder="Crew size"
-              type="number"
-              value={crewSize}
-              onChange={(e) => setCrewSize(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              type="datetime-local"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-            />
-
-            <button style={styles.button} onClick={handleCreateJob} disabled={loading}>
-              {loading ? 'Saving...' : 'Post job'}
+          <div className="topbar-right">
+            <div className="credit-pill">Credits: {creditBalance}</div>
+            <div className="user-pill">{user.email}</div>
+            <button className="btn-secondary" onClick={handleLogout}>
+              Logout
             </button>
           </div>
+        </div>
+      </div>
 
-          <div style={styles.jobsSection}>
-            <h2>Open jobs</h2>
+      <div className="container">
+        {message && <div className="message" style={{ marginBottom: 16 }}>{message}</div>}
 
-            {jobsLoading ? (
-              <p>Loading jobs...</p>
-            ) : jobsList.length === 0 ? (
-              <p>Nema poslova trenutno.</p>
+        {activeTab === 'home' && (
+          <div className="grid">
+            <div>
+              <HomeScreen jobs={jobsList} loading={jobsLoading} onRefresh={loadJobs} />
+            </div>
+
+            <div>
+              <div className="panel">
+                <h2>Quick overview</h2>
+                <div className="kpi-row">
+                  <div className="kpi">
+                    <div className="kpi-label">Open jobs</div>
+                    <div className="kpi-value">{jobsList.length}</div>
+                  </div>
+                  <div className="kpi">
+                    <div className="kpi-label">My jobs</div>
+                    <div className="kpi-value">{myJobs.length}</div>
+                  </div>
+                  <div className="kpi">
+                    <div className="kpi-label">Credits</div>
+                    <div className="kpi-value">{creditBalance}</div>
+                  </div>
+                </div>
+
+                <div className="panel-muted">
+                  Next step is to add apply flow, applicant review, notifications, and profile verification.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'post' && (
+          <div className="grid">
+            <div>
+              <PostJobScreen
+                categories={categories}
+                onCreated={afterJobCreated}
+                onMessage={setMessage}
+              />
+            </div>
+
+            <div>
+              <div className="panel">
+                <h2>Posting rules</h2>
+                <div className="panel-muted">
+                  Posting a job currently costs 10 credits. Crew size and payment are stored in the live database.
+                </div>
+                <div className="profile-box">
+                  <div className="profile-line">Use a clear title and exact location.</div>
+                  <div className="profile-line">Describe what kind of help you need.</div>
+                  <div className="profile-line">Add realistic pay per worker.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'my-jobs' && (
+          <div className="panel">
+            <h2>My posted jobs</h2>
+            <div className="panel-muted">
+              Jobs you created with your current account.
+            </div>
+
+            {myJobs.length === 0 ? (
+              <div className="empty-state">You have not posted any jobs yet.</div>
             ) : (
-              <div style={styles.jobsGrid}>
-                {jobsList.map((job) => (
-                  <div key={job.id} style={styles.jobCard}>
-                    <h3 style={{ marginTop: 0 }}>{job.title}</h3>
-                    <p>{job.description}</p>
-                    <p><strong>City:</strong> {job.city}</p>
-                    <p><strong>Address:</strong> {job.address}</p>
-                    <p><strong>Pay per worker:</strong> {job.pay_per_worker} RSD</p>
-                    <p><strong>Crew:</strong> {job.accepted_workers}/{job.crew_size}</p>
-                    <p><strong>Status:</strong> {job.status}</p>
-                    <p><strong>Date:</strong> {new Date(job.scheduled_date).toLocaleString()}</p>
+              <div className="job-list">
+                {myJobs.map((job) => (
+                  <div className="job-card" key={job.id}>
+                    <div className="badge-row">
+                      <span className="badge">{job.status}</span>
+                      <span className="badge">{job.city}</span>
+                    </div>
+                    <h3>{job.title}</h3>
+                    <div>{job.description}</div>
+                    <div className="job-meta">
+                      <div><strong>Address:</strong> {job.address}</div>
+                      <div><strong>Pay:</strong> {job.pay_per_worker} RSD</div>
+                      <div><strong>Crew:</strong> {job.accepted_workers}/{job.crew_size}</div>
+                      <div><strong>Date:</strong> {new Date(job.scheduled_date).toLocaleString()}</div>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1>Hando</h1>
-        <p>{mode === 'login' ? 'Login' : 'Create account'}</p>
-
-        {mode === 'signup' && (
-          <input
-            style={styles.input}
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
         )}
 
-        <input
-          style={styles.input}
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        {activeTab === 'profile' && (
+          <div className="panel">
+            <h2>Profile</h2>
+            <div className="panel-muted">Basic live account data from your current session.</div>
 
-        <input
-          style={styles.input}
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {mode === 'login' ? (
-          <button style={styles.button} onClick={handleLogin} disabled={loading}>
-            {loading ? 'Loading...' : 'Login'}
-          </button>
-        ) : (
-          <button style={styles.button} onClick={handleSignup} disabled={loading}>
-            {loading ? 'Loading...' : 'Sign up'}
-          </button>
+            <div className="profile-box">
+              <div className="profile-line"><strong>Email:</strong> {user.email}</div>
+              <div className="profile-line"><strong>User ID:</strong> {user.id}</div>
+              <div className="profile-line"><strong>Credits:</strong> {creditBalance}</div>
+              <div className="profile-line"><strong>Status:</strong> Logged in</div>
+            </div>
+          </div>
         )}
-
-        <button
-          style={styles.switchButton}
-          onClick={() => {
-            setMode(mode === 'login' ? 'signup' : 'login');
-            setMessage('');
-          }}
-        >
-          {mode === 'login'
-            ? 'Nemaš nalog? Registruj se'
-            : 'Već imaš nalog? Uloguj se'}
-        </button>
-
-        {message && <p style={styles.message}>{message}</p>}
       </div>
+
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    background: '#111',
-    color: 'white',
-    fontFamily: 'Arial, sans-serif',
-    padding: '24px',
-    boxSizing: 'border-box',
-  },
-  container: {
-    maxWidth: '1100px',
-    margin: '0 auto',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '420px',
-    background: '#1b1b1b',
-    border: '1px solid #333',
-    borderRadius: '16px',
-    padding: '24px',
-    boxSizing: 'border-box',
-    margin: '80px auto',
-  },
-  headerCard: {
-    background: '#1b1b1b',
-    border: '1px solid #333',
-    borderRadius: '16px',
-    padding: '24px',
-    marginBottom: '24px',
-  },
-  formCard: {
-    background: '#1b1b1b',
-    border: '1px solid #333',
-    borderRadius: '16px',
-    padding: '24px',
-    marginBottom: '24px',
-  },
-  headerButtons: {
-    display: 'flex',
-    gap: '12px',
-    flexWrap: 'wrap',
-    marginTop: '16px',
-  },
-  jobsSection: {
-    background: '#1b1b1b',
-    border: '1px solid #333',
-    borderRadius: '16px',
-    padding: '24px',
-  },
-  jobsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '16px',
-  },
-  jobCard: {
-    background: '#222',
-    border: '1px solid #3a3a3a',
-    borderRadius: '14px',
-    padding: '16px',
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    marginBottom: '12px',
-    borderRadius: '10px',
-    border: '1px solid #444',
-    background: '#222',
-    color: 'white',
-    boxSizing: 'border-box',
-  },
-  textarea: {
-    width: '100%',
-    minHeight: '100px',
-    padding: '12px',
-    marginBottom: '12px',
-    borderRadius: '10px',
-    border: '1px solid #444',
-    background: '#222',
-    color: 'white',
-    boxSizing: 'border-box',
-    resize: 'vertical',
-  },
-  button: {
-    padding: '12px 16px',
-    borderRadius: '10px',
-    border: 'none',
-    background: '#4f46e5',
-    color: 'white',
-    cursor: 'pointer',
-  },
-  logoutButton: {
-    padding: '12px 16px',
-    borderRadius: '10px',
-    border: '1px solid #444',
-    background: 'transparent',
-    color: 'white',
-    cursor: 'pointer',
-  },
-  switchButton: {
-    width: '100%',
-    padding: '12px',
-    borderRadius: '10px',
-    border: '1px solid #444',
-    background: 'transparent',
-    color: 'white',
-    cursor: 'pointer',
-  },
-  message: {
-    marginTop: '12px',
-    color: '#ccc',
-  },
-};
