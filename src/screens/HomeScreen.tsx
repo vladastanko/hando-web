@@ -1,192 +1,246 @@
 import { useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import type { Job } from '../types';
+import type { Job, Category, Profile } from '../types';
+import { JobCard } from '../components/jobs/JobCard';
+import { JobDetailModal } from '../components/jobs/JobDetailModal';
+import { FilterPanel, type Filters, DEFAULT_FILTERS } from '../components/jobs/FilterPanel';
+import { JobMap } from '../components/map/JobMap';
 
-type Props = {
+// All categories shown even if empty in DB – user can search/filter
+const STATIC_CATEGORIES = [
+  { id: '', name: 'All', icon: '✦', color: '#5b5ef4' },
+];
+
+interface Props {
   jobs: Job[];
+  categories: Category[];
   loading: boolean;
-  onRefresh: () => void;
   userLocation: { lat: number; lng: number } | null;
-  onRequestLocation: () => void;
   locationLoading: boolean;
-};
-
-type ViewMode = 'list' | 'map';
-
-const DEFAULT_CENTER: [number, number] = [44.8176, 20.4633];
-
-function formatDate(value: string) {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
+  currentUser: Profile | null;
+  onRefresh: () => void;
+  onRequestLocation: () => Promise<void> | void;
+  onJobApplied: () => void;
+  onMessage: (msg: string, type?: 'success' | 'error') => void;
 }
 
-function getJobCoords(job: Job): [number, number] | null {
-  const lat = job.location?.lat;
-  const lng = job.location?.lng;
-  if (typeof lat === 'number' && typeof lng === 'number') return [lat, lng];
-  return null;
-}
-
-function getInitials(text: string) {
-  return text
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function MapRecenter({ center }: { center: [number, number] }) {
-  const map = useMap();
-  map.setView(center, map.getZoom(), { animate: true });
-  return null;
-}
-
-function createJobIcon(label: string) {
-  return L.divIcon({
-    className: 'job-marker-wrapper',
-    html: `<div class="job-marker">${label}</div>`,
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
-    popupAnchor: [0, -20],
-  });
-}
+type View = 'list' | 'map' | 'split';
 
 export default function HomeScreen({
-  jobs,
-  loading,
-  onRefresh,
-  userLocation,
-  onRequestLocation,
-  locationLoading,
+  jobs, categories, loading, userLocation, locationLoading,
+  currentUser, onRefresh, onRequestLocation, onJobApplied, onMessage,
 }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>('map');
+  const [view, setView] = useState<View>('list');
+  const [search, setSearch] = useState('');
+  const [activeCat, setActiveCat] = useState('');
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const center = userLocation
-    ? [userLocation.lat, userLocation.lng] as [number, number]
-    : DEFAULT_CENTER;
+  // Merge static "All" with DB categories
+  const allCats = useMemo(() => [
+    { id: '', name: 'All', icon: '✦', color: '#5b5ef4' },
+    ...categories,
+  ], [categories]);
 
-  const mappedJobs = useMemo(
-    () => jobs.filter((job) => getJobCoords(job)),
-    [jobs]
-  );
+  // Filter + sort jobs
+  const filtered = useMemo(() => {
+    let list = [...jobs];
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(j =>
+        j.title.toLowerCase().includes(q) ||
+        j.description?.toLowerCase().includes(q) ||
+        j.city.toLowerCase().includes(q) ||
+        j.category?.name.toLowerCase().includes(q)
+      );
+    }
+
+    // Category pill
+    if (activeCat) list = list.filter(j => j.category_id === activeCat);
+
+    // Filters
+    if (filters.categoryId) list = list.filter(j => j.category_id === filters.categoryId);
+    if (filters.verifiedOnly) list = list.filter(j => j.poster?.verification_status === 'verified');
+    if (filters.hasHistory) list = list.filter(j => (j.poster?.completed_jobs_poster ?? 0) > 0);
+    if (filters.minRating > 0) list = list.filter(j => (j.poster?.rating_as_poster ?? 0) >= filters.minRating);
+    if (filters.minPay > 0) list = list.filter(j => j.pay_per_worker >= filters.minPay);
+    if (filters.maxPay < 50000) list = list.filter(j => j.pay_per_worker <= filters.maxPay);
+    if (userLocation && filters.maxDistance < 100)
+      list = list.filter(j => (j.distance_km ?? 999) <= filters.maxDistance);
+
+    // Sort
+    switch (filters.sortBy) {
+      case 'closest':
+        list.sort((a, b) => (a.distance_km ?? 999) - (b.distance_km ?? 999));
+        break;
+      case 'highest_pay':
+        list.sort((a, b) => b.pay_per_worker - a.pay_per_worker);
+        break;
+      case 'best_rated':
+        list.sort((a, b) => (b.poster?.rating_as_poster ?? 0) - (a.poster?.rating_as_poster ?? 0));
+        break;
+      default: // newest — already sorted from API
+        break;
+    }
+
+    return list;
+  }, [jobs, search, activeCat, filters, userLocation]);
+
+  const activeFiltersCount = useMemo(() => {
+    let n = 0;
+    if (filters.categoryId) n++;
+    if (filters.verifiedOnly) n++;
+    if (filters.hasHistory) n++;
+    if (filters.minRating > 0) n++;
+    if (filters.minPay > 0) n++;
+    if (filters.maxPay < 50000) n++;
+    if (filters.maxDistance < 100) n++;
+    if (filters.sortBy !== 'newest') n++;
+    return n;
+  }, [filters]);
 
   return (
-    <div className="home-stack">
-      <section className="hero-card panel">
-        <div className="hero-copy">
-          <div className="eyebrow">👋 Welcome back</div>
-          <h2 className="hero-title">Find nearby jobs faster</h2>
-          <p className="hero-text">
-            Browse live tasks, switch to the map view, and spot open jobs around your current location.
-          </p>
-        </div>
-        <div className="hero-actions">
-          <button className="btn btn-ghost" onClick={onRefresh} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh feed'}
-          </button>
-          <button className="btn" onClick={onRequestLocation} disabled={locationLoading}>
-            {locationLoading ? 'Locating...' : userLocation ? 'Update my location' : 'Enable location'}
-          </button>
-        </div>
-      </section>
-
-      <section className="section-head">
-        <div>
-          <h3>Discover jobs</h3>
-          <p>List and map stay synced with the same live Supabase data.</p>
-        </div>
-        <div className="view-switch">
-          <button className={viewMode === 'map' ? 'active' : ''} onClick={() => setViewMode('map')}>Map</button>
-          <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
-        </div>
-      </section>
-
-      {viewMode === 'map' ? (
-        <section className="panel map-panel">
-          <div className="map-toolbar">
-            <div>
-              <strong>{mappedJobs.length}</strong> jobs with map coordinates
-            </div>
-            <div className="map-note">
-              {userLocation
-                ? 'Your current browser location is shown on the map.'
-                : 'Allow location to center the map around the user.'}
-            </div>
-          </div>
-
-          <div className="map-shell">
-            <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
-              <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <>
+      <div className="pg">
+        {/* Top actions row */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+          <div className="srch-row" style={{ flex: 1, minWidth: 200 }}>
+            <div className="srch-w">
+              <span className="srch-ic">🔍</span>
+              <input
+                className="srch-inp"
+                placeholder="Search jobs, cities, categories..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
               />
-              <MapRecenter center={center} />
-
-              {userLocation && (
-                <CircleMarker center={center} radius={10} pathOptions={{ color: '#6c63ff', fillColor: '#6c63ff', fillOpacity: 0.8 }}>
-                  <Popup>You are here</Popup>
-                </CircleMarker>
-              )}
-
-              {mappedJobs.map((job) => {
-                const coords = getJobCoords(job)!;
-                return (
-                  <Marker key={job.id} position={coords} icon={createJobIcon(getInitials(job.title))}>
-                    <Popup>
-                      <div className="map-popup">
-                        <strong>{job.title}</strong>
-                        <div>{job.city}</div>
-                        <div>{job.address}</div>
-                        <div>{job.pay_per_worker} RSD / worker</div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-            </MapContainer>
+            </div>
           </div>
-        </section>
-      ) : null}
 
-      {(viewMode === 'list' || mappedJobs.length === 0) && (
-        <section className="job-list-grid">
-          {loading ? (
-            <div className="empty-state">Loading jobs...</div>
-          ) : jobs.length === 0 ? (
-            <div className="empty-state">No open jobs yet.</div>
-          ) : (
-            jobs.map((job) => {
-              const spotsLeft = Math.max((job.crew_size || 0) - (job.accepted_workers || 0), 0);
-              return (
-                <article className="job-card job-card-rich" key={job.id}>
-                  <div className="job-card-top">
-                    <span className="badge badge-open">Open</span>
-                    <span className="badge">{job.category?.name || job.city}</span>
-                  </div>
+          {/* Location button (compact) */}
+          <button
+            className="btn btn-s btn-sm"
+            onClick={onRequestLocation}
+            disabled={locationLoading}
+            title={userLocation ? 'Update location' : 'Enable location'}
+            style={{ flexShrink: 0 }}
+          >
+            {locationLoading ? <span className="spin" style={{ width: 14, height: 14 }} /> : '📍'}
+            <span style={{ display: 'none' }}>Loc</span>
+          </button>
 
-                  <h3>{job.title}</h3>
-                  <p className="job-description">{job.description}</p>
+          {/* Refresh (compact) */}
+          <button
+            className="btn btn-s btn-sm"
+            onClick={onRefresh}
+            disabled={loading}
+            title="Refresh feed"
+            style={{ flexShrink: 0 }}
+          >
+            {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : '↻'}
+          </button>
 
-                  <div className="job-meta-row">
-                    <span>📍 {job.city}</span>
-                    <span>🗓 {formatDate(job.scheduled_date)}</span>
-                  </div>
-                  <div className="job-meta-row">
-                    <span>💰 {job.pay_per_worker} RSD / worker</span>
-                    <span>👥 {spotsLeft} spots left</span>
-                  </div>
-                  <div className="job-address">{job.address}</div>
-                </article>
-              );
-            })
+          {/* Filter toggle */}
+          <button
+            className={`btn btn-sm ${activeFiltersCount > 0 ? 'btn-p' : 'btn-s'}`}
+            onClick={() => setShowFilters(v => !v)}
+            style={{ flexShrink: 0, gap: 5 }}
+          >
+            ⚙ Filters{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}
+          </button>
+
+          {/* View switch */}
+          <div className="vs">
+            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')}>☰ List</button>
+            <button className={`vs-btn${view === 'map' ? ' on' : ''}`} onClick={() => setView('map')}>⊕ Map</button>
+            <button className={`vs-btn${view === 'split' ? ' on' : ''}`} onClick={() => setView('split')}>⊟ Split</button>
+          </div>
+        </div>
+
+        {/* Category pills */}
+        <div className="cat-row" style={{ marginBottom: 20 }}>
+          {allCats.map(cat => (
+            <button
+              key={cat.id}
+              className={`cpill${activeCat === cat.id ? ' on' : ''}`}
+              onClick={() => setActiveCat(activeCat === cat.id ? '' : cat.id)}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Main layout: filters sidebar + content */}
+        <div className={showFilters ? 'cols' : ''}>
+          {showFilters && (
+            <FilterPanel categories={categories} filters={filters} onChange={setFilters} />
           )}
-        </section>
-      )}
-    </div>
+
+          <div style={{ minWidth: 0 }}>
+            {/* Result count */}
+            <div className="sec-hdr" style={{ marginBottom: 12 }}>
+              <div>
+                <span className="sec-ttl">{filtered.length} job{filtered.length !== 1 ? 's' : ''}</span>
+                {userLocation && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', marginLeft: 8 }}>near you</span>}
+              </div>
+            </div>
+
+            {/* Map view */}
+            {(view === 'map' || view === 'split') && (
+              <div className="map-wrap" style={{ marginBottom: view === 'split' ? 20 : 0 }}>
+                <div className="map-hdr">
+                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>
+                    {filtered.filter(j => j.location).length} jobs on map
+                  </span>
+                  {!userLocation && (
+                    <button className="btn btn-s btn-sm" onClick={onRequestLocation}>
+                      📍 Enable location
+                    </button>
+                  )}
+                </div>
+                <JobMap
+                  jobs={filtered}
+                  userLocation={userLocation}
+                  selectedJobId={selectedJob?.id}
+                  onJobClick={setSelectedJob}
+                />
+              </div>
+            )}
+
+            {/* List view */}
+            {(view === 'list' || view === 'split') && (
+              <>
+                {loading ? (
+                  <div className="loading"><span className="spin" />Loading jobs...</div>
+                ) : filtered.length === 0 ? (
+                  <div className="empty">
+                    <span className="empty-ic">🔍</span>
+                    <span className="empty-t">No jobs found</span>
+                    <span className="empty-s">Try adjusting your search or filters, or check back later.</span>
+                  </div>
+                ) : (
+                  <div className="jgrid">
+                    {filtered.map(job => (
+                      <JobCard key={job.id} job={job} onClick={setSelectedJob} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Job detail modal */}
+      <JobDetailModal
+        job={selectedJob}
+        currentUser={currentUser}
+        onClose={() => setSelectedJob(null)}
+        onApplied={onJobApplied}
+        onMessage={onMessage}
+      />
+    </>
   );
 }

@@ -1,139 +1,264 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { jobs } from '../lib/supabase';
 import type { Category } from '../types';
+import type { UserLocation } from '../hooks/useLocation';
 
-type Props = {
+interface Props {
   categories: Category[];
+  creditBalance: number;
+  userLocation: UserLocation | null;
+  onRequestLocation: () => Promise<void> | void;
   onCreated: () => Promise<void>;
-  onMessage: (message: string) => void;
-  userLocation: { lat: number; lng: number } | null;
-  onRequestLocation: () => void;
-};
+  onMessage: (msg: string, type?: 'success' | 'error') => void;
+}
 
-export default function PostJobScreen({ categories, onCreated, onMessage, userLocation, onRequestLocation }: Props) {
+// All categories to show (will merge with DB ones)
+const EXTRA_CATEGORIES = [
+  { name: 'Moving Help', icon: '📦' },
+  { name: 'Furniture Assembly', icon: '🪑' },
+  { name: 'Cleaning', icon: '🧹' },
+  { name: 'Delivery', icon: '🚚' },
+  { name: 'Handyman', icon: '🔧' },
+  { name: 'Painting', icon: '🖌' },
+  { name: 'Gardening', icon: '🌿' },
+  { name: 'Pet Care', icon: '🐾' },
+  { name: 'Elderly Assistance', icon: '🤝' },
+  { name: 'Childcare', icon: '👶' },
+  { name: 'Event Help', icon: '🎉' },
+  { name: 'Warehouse Help', icon: '🏭' },
+  { name: 'Construction Help', icon: '🏗' },
+  { name: 'Electrical Work', icon: '⚡' },
+  { name: 'Plumbing', icon: '🔩' },
+  { name: 'Appliance Help', icon: '🛠' },
+  { name: 'Car Wash / Detailing', icon: '🚗' },
+  { name: 'Beauty / Personal', icon: '✂️' },
+  { name: 'Tutoring', icon: '📚' },
+  { name: 'Admin / Office', icon: '💼' },
+  { name: 'Other', icon: '📋' },
+];
+
+export default function PostJobScreen({ categories, creditBalance, userLocation, onRequestLocation, onCreated, onMessage }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [payPerWorker, setPayPerWorker] = useState('');
-  const [crewSize, setCrewSize] = useState('');
+  const [crewSize, setCrewSize] = useState('1');
   const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [durationHours, setDurationHours] = useState('2');
   const [loading, setLoading] = useState(false);
 
-  const handleCreateJob = async () => {
-    if (!title || !description || !categoryId || !city || !address || !payPerWorker || !crewSize || !scheduledDate) {
-      onMessage('Fill in all required fields.');
-      return;
+  // Populate city from geocode
+  useEffect(() => {
+    if (userLocation?.place?.city && !city) {
+      setCity(userLocation.place.city);
     }
+  }, [userLocation]);
+
+  const totalPay = (Number(payPerWorker) || 0) * (Number(crewSize) || 1);
+  const canPost = creditBalance >= 10;
+
+  // Merge DB categories with extra (show extra if not in DB)
+  const displayCategories = categories.length > 0 ? categories : EXTRA_CATEGORIES.map((c, i) => ({ id: String(i), ...c, color: '#5b5ef4' }));
+
+  const handleCreate = async () => {
+    if (!title.trim()) { onMessage('Please enter a job title.', 'error'); return; }
+    if (!description.trim()) { onMessage('Please describe the work.', 'error'); return; }
+    if (!categoryId) { onMessage('Please select a category.', 'error'); return; }
+    if (!city.trim()) { onMessage('Please enter a city.', 'error'); return; }
+    if (!address.trim()) { onMessage('Please enter an address.', 'error'); return; }
+    if (!payPerWorker || Number(payPerWorker) < 1) { onMessage('Please enter pay per worker.', 'error'); return; }
+    if (!scheduledDate) { onMessage('Please select a date.', 'error'); return; }
+    if (!canPost) { onMessage('Insufficient credits. Posting a job costs 10 credits.', 'error'); return; }
 
     setLoading(true);
+    const combinedDatetime = scheduledTime
+      ? `${scheduledDate}T${scheduledTime}:00`
+      : `${scheduledDate}T09:00:00`;
 
     const res = await jobs.create({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       category_id: categoryId,
-      address,
-      city,
+      address: address.trim(),
+      city: city.trim(),
       lat: userLocation?.lat ?? 44.8176,
       lng: userLocation?.lng ?? 20.4633,
-      scheduled_date: scheduledDate,
-      duration_hours: 3,
+      scheduled_date: combinedDatetime,
+      duration_hours: Number(durationHours) || 2,
       pay_per_worker: Number(payPerWorker),
-      crew_size: Number(crewSize),
+      crew_size: Number(crewSize) || 1,
     });
 
+    setLoading(false);
+
     if (res.error) {
-      onMessage(`Create job error: ${res.error}`);
-      setLoading(false);
+      onMessage(res.error, 'error');
       return;
     }
 
-    onMessage('Job created successfully.');
-    setTitle('');
-    setDescription('');
-    setCategoryId('');
-    setCity('');
-    setAddress('');
-    setPayPerWorker('');
-    setCrewSize('');
-    setScheduledDate('');
-
+    onMessage('Job posted successfully! −10 credits deducted.', 'success');
+    // Reset
+    setTitle(''); setDescription(''); setCategoryId('');
+    setCity(''); setAddress(''); setPayPerWorker('');
+    setCrewSize('1'); setScheduledDate(''); setScheduledTime(''); setDurationHours('2');
     await onCreated();
-    setLoading(false);
   };
 
   return (
-    <div className="panel form-panel">
-      <div className="section-head compact">
-        <div>
-          <h3>Post a new job</h3>
-          <p>Keep the existing backend, but make the posting flow cleaner and more mobile-friendly.</p>
+    <div className="pg-n">
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', marginBottom: 6 }}>Post a Job</h1>
+        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>Describe the work and find skilled help nearby.</p>
+      </div>
+
+      <div className="card">
+        {/* Section 1 – Job details */}
+        <div className="psect">
+          <div className="psect-ttl">
+            <div className="psect-n">1</div>
+            Job Details
+          </div>
+          <div className="frow" style={{ gap: 16 }}>
+            <div className="fld">
+              <label className="flb">Job title *</label>
+              <input className="inp" placeholder="e.g. Help moving furniture to 3rd floor" value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
+            <div className="fld">
+              <label className="flb">Description *</label>
+              <textarea
+                className="txta"
+                placeholder="Describe what needs to be done, what workers should bring, any special requirements..."
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="fld">
+              <label className="flb">Category *</label>
+              <select className="sel" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+                <option value="">Select a category</option>
+                {displayCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2 – Date & Time */}
+        <div className="psect">
+          <div className="psect-ttl">
+            <div className="psect-n">2</div>
+            When
+          </div>
+          <div className="frow frow-3">
+            <div className="fld">
+              <label className="flb">Date *</label>
+              <input className="inp" type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+            </div>
+            <div className="fld">
+              <label className="flb">Start time (24h)</label>
+              <input className="inp" type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} />
+            </div>
+            <div className="fld">
+              <label className="flb">Duration (hours)</label>
+              <select className="sel" value={durationHours} onChange={e => setDurationHours(e.target.value)}>
+                {[1,2,3,4,5,6,8,10,12].map(h => (
+                  <option key={h} value={h}>{h} hour{h > 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3 – Location */}
+        <div className="psect">
+          <div className="psect-ttl">
+            <div className="psect-n">3</div>
+            Location
+          </div>
+          <div className="frow frow-2" style={{ marginBottom: 14 }}>
+            <div className="fld">
+              <label className="flb">City *</label>
+              <input className="inp" placeholder="Novi Sad" value={city} onChange={e => setCity(e.target.value)} />
+            </div>
+            <div className="fld">
+              <label className="flb">Street / Area *</label>
+              <input className="inp" placeholder="Bulevar Oslobođenja" value={address} onChange={e => setAddress(e.target.value)} />
+            </div>
+          </div>
+          <div className="loc-strip">
+            <div className="loc-info">
+              <span style={{ fontSize: '1.25rem' }}>📍</span>
+              <div>
+                <div style={{ fontSize: '.875rem', fontWeight: 600 }}>
+                  {userLocation?.place?.display ?? (userLocation ? 'Location captured' : 'No location set')}
+                </div>
+                <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2 }}>
+                  {userLocation
+                    ? 'Your current location will be used for the map pin'
+                    : 'Allow location for accurate map placement'}
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-s btn-sm" onClick={onRequestLocation}>
+              {userLocation ? 'Update' : 'Use my location'}
+            </button>
+          </div>
+        </div>
+
+        {/* Section 4 – Pay */}
+        <div className="psect">
+          <div className="psect-ttl">
+            <div className="psect-n">4</div>
+            Pay & Crew
+          </div>
+          <div className="frow frow-2">
+            <div className="fld">
+              <label className="flb">Pay per worker (RSD) *</label>
+              <input className="inp" type="number" placeholder="3000" min={1} value={payPerWorker} onChange={e => setPayPerWorker(e.target.value)} />
+            </div>
+            <div className="fld">
+              <label className="flb">Workers needed</label>
+              <select className="sel" value={crewSize} onChange={e => setCrewSize(e.target.value)}>
+                {[1,2,3,4,5,6,8,10].map(n => (
+                  <option key={n} value={n}>{n} worker{n > 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {totalPay > 0 && (
+            <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>Total payout</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-.02em' }}>
+                {totalPay.toLocaleString()} RSD
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer – submit */}
+        <div className="psect">
+          <div className="cred-notice" style={{ marginBottom: 16 }}>
+            <span style={{ fontSize: '1.25rem' }}>🪙</span>
+            <span>
+              Posting costs <strong>10 credits</strong>. Your balance: <strong>{creditBalance} credits</strong>.
+              {!canPost && <span style={{ color: 'var(--err)', marginLeft: 6 }}>Insufficient credits.</span>}
+            </span>
+          </div>
+          <button
+            className="btn btn-p btn-fw btn-xl"
+            onClick={handleCreate}
+            disabled={loading || !canPost}
+          >
+            {loading ? 'Posting...' : 'Post Job — 10 credits'}
+          </button>
         </div>
       </div>
-
-      <div className="form-grid">
-        <label className="field">
-          <span>Job title</span>
-          <input className="input" placeholder="Need help moving furniture" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-
-        <label className="field field-full">
-          <span>Description</span>
-          <textarea className="textarea" placeholder="Describe the work, timing, and what workers should bring." value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span>Category</span>
-          <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Select category</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Scheduled date</span>
-          <input className="input" type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span>City</span>
-          <input className="input" placeholder="Novi Sad" value={city} onChange={(e) => setCity(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span>Address</span>
-          <input className="input" placeholder="Street and number" value={address} onChange={(e) => setAddress(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span>Pay per worker</span>
-          <input className="input" type="number" placeholder="3000" value={payPerWorker} onChange={(e) => setPayPerWorker(e.target.value)} />
-        </label>
-
-        <label className="field">
-          <span>Crew size</span>
-          <input className="input" type="number" placeholder="2" value={crewSize} onChange={(e) => setCrewSize(e.target.value)} />
-        </label>
-      </div>
-
-      <div className="location-strip">
-        <div>
-          <strong>Location for the map</strong>
-          <p>
-            {userLocation
-              ? `Using current browser location: ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`
-              : 'No browser location yet. You can still post, but the map will use the default fallback point.'}
-          </p>
-        </div>
-        <button className="btn btn-ghost" onClick={onRequestLocation}>Use my current location</button>
-      </div>
-
-      <button className="btn btn-full" onClick={handleCreateJob} disabled={loading}>
-        {loading ? 'Saving...' : 'Post job'}
-      </button>
     </div>
   );
 }
