@@ -85,7 +85,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     const res = await profiles.submitVerification(currentUser.id, idFront, idBack);
     setVerifying(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage('Verification submitted. You'll be notified when approved.', 'success');
+    onMessage("Verification submitted. You'll be notified when approved.", 'success');
     // Refresh profile
     const pr = await profiles.get(currentUser.id);
     if (pr.data) onProfileUpdated(pr.data);
