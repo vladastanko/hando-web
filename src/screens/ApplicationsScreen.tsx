@@ -16,7 +16,7 @@ interface Props {
 type MyTab = 'posted' | 'applied';
 type PostedTab = 'open' | 'in_progress' | 'completed';
 
-export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange }: Props) {
+export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _onCreditChange }: Props) {
   const [myTab, setMyTab] = useState<MyTab>('applied');
   const [postedTab, setPostedTab] = useState<PostedTab>('open');
   const [myJobs, setMyJobs] = useState<Job[]>([]);

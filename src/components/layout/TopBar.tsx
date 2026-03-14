@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '../../types';
-import { Avatar } from '../ui/Avatar';
 import { getInitials } from '../../utils/format';
 
 type Mode = 'find' | 'post';

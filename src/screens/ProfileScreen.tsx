@@ -32,7 +32,6 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   const [verifying, setVerifying] = useState(false);
 
   // Avatar
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {

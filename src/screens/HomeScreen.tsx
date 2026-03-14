@@ -6,9 +6,6 @@ import { FilterPanel, type Filters, DEFAULT_FILTERS } from '../components/jobs/F
 import { JobMap } from '../components/map/JobMap';
 
 // All categories shown even if empty in DB – user can search/filter
-const STATIC_CATEGORIES = [
-  { id: '', name: 'All', icon: '✦', color: '#5b5ef4' },
-];
 
 interface Props {
   jobs: Job[];

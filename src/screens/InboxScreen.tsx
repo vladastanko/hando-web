@@ -73,15 +73,15 @@ export default function InboxScreen({ currentUser }: Props) {
       job_id: string;
       participant_a: string;
       participant_b: string;
-      job: { title: string } | null;
-      prof_a: { id: string; full_name: string; avatar_url: string | null } | null;
-      prof_b: { id: string; full_name: string; avatar_url: string | null } | null;
+      job: { title: string }[] | null;
+      prof_a: { id: string; full_name: string; avatar_url: string | null }[] | null;
+      prof_b: { id: string; full_name: string; avatar_url: string | null }[] | null;
       messages: DbMessage[];
     };
 
-    const convs: Conversation[] = (data as RawConv[]).map(c => {
+    const convs: Conversation[] = (data as unknown as RawConv[]).map(c => {
       const isA  = c.participant_a === currentUser.id;
-      const other = isA ? c.prof_b : c.prof_a;
+      const other = isA ? c.prof_b?.[0] : c.prof_a?.[0];
       const msgs  = (c.messages ?? []).slice().sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -89,7 +89,7 @@ export default function InboxScreen({ currentUser }: Props) {
       return {
         id:               c.id,
         job_id:           c.job_id,
-        job_title:        c.job?.title ?? 'Job',
+        job_title:        c.job?.[0]?.title ?? 'Job',
         other_user_id:    other?.id    ?? '',
         other_user_name:  other?.full_name  ?? 'User',
         other_user_avatar: other?.avatar_url ?? null,
