@@ -1,12 +1,5 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Job } from '../../types';
-
-const DEFAULT_CENTER: [number, number] = [44.8176, 20.4633];
-
-function getCoords(job: Job): [number, number] | null {
-  const lat = job.location?.lat, lng = job.location?.lng;
-  return typeof lat === 'number' && typeof lng === 'number' ? [lat, lng] : null;
-}
 
 interface Props {
   jobs: Job[];
