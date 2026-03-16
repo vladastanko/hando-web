@@ -1,6 +1,4 @@
-import { useMemo, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useMemo, useEffect, useState } from 'react';
 import type { Job } from '../../types';
 
 const DEFAULT_CENTER: [number, number] = [44.8176, 20.4633];
@@ -10,24 +8,6 @@ function getCoords(job: Job): [number, number] | null {
   return typeof lat === 'number' && typeof lng === 'number' ? [lat, lng] : null;
 }
 
-function createPin(label: string, selected: boolean) {
-  return L.divIcon({
-    className: 'jmap-pin',
-    html: `<div class="jmap-bub${selected ? ' sel' : ''}">${label}</div>`,
-    iconSize: [1, 1] as [number, number],
-    iconAnchor: [24, 20] as [number, number],
-    popupAnchor: [0, -22] as [number, number],
-  });
-}
-
-function Recenter({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom(), { animate: true });
-  }, [center[0], center[1]]); // eslint-disable-line react-hooks/exhaustive-deps
-  return null;
-}
-
 interface Props {
   jobs: Job[];
   userLocation: { lat: number; lng: number } | null;
@@ -35,55 +15,35 @@ interface Props {
   onJobClick: (job: Job) => void;
 }
 
+// Lazy-load the actual map components so Leaflet never runs during SSR or
+// before the browser DOM is ready. This is the standard fix for black screens.
 export function JobMap({ jobs, userLocation, selectedJobId, onJobClick }: Props) {
-  const center: [number, number] = userLocation
-    ? [userLocation.lat, userLocation.lng]
-    : DEFAULT_CENTER;
+  const [MapComponents, setMapComponents] = useState<React.ComponentType<Props> | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  const mapped = useMemo(() => jobs.filter(j => getCoords(j)), [jobs]);
+  useEffect(() => {
+    // Dynamically import everything that touches Leaflet's window/document
+    import('./JobMapInner')
+      .then(mod => setMapComponents(() => mod.JobMapInner))
+      .catch(() => setLoadError(true));
+  }, []);
 
-  return (
-    <div className="map-sh">
-      <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
-        <TileLayer
-          attribution='© <a href="https://openstreetmap.org">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Recenter center={center} />
+  if (loadError) {
+    return (
+      <div className="map-sh" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-ov)', color: 'var(--tx-2)', fontSize: '.875rem' }}>
+        Map could not be loaded
+      </div>
+    );
+  }
 
-        {userLocation && (
-          <CircleMarker
-            center={center}
-            radius={9}
-            pathOptions={{ color: '#5b5ef4', fillColor: '#5b5ef4', fillOpacity: 0.85, weight: 2 }}
-          >
-            <Popup>
-              <div className="map-pop"><strong>📍 You are here</strong></div>
-            </Popup>
-          </CircleMarker>
-        )}
+  if (!MapComponents) {
+    return (
+      <div className="map-sh" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-ov)', color: 'var(--tx-2)', gap: 10 }}>
+        <span className="spin" />
+        <span style={{ fontSize: '.875rem' }}>Loading map...</span>
+      </div>
+    );
+  }
 
-        {mapped.map(job => {
-          const coords = getCoords(job)!;
-          const label = `${job.pay_per_worker.toLocaleString()} RSD`;
-          return (
-            <Marker
-              key={job.id}
-              position={coords}
-              icon={createPin(label, selectedJobId === job.id)}
-              eventHandlers={{ click: () => onJobClick(job) }}
-            >
-              <Popup>
-                <div className="map-pop">
-                  <div className="map-pop-title">{job.title}</div>
-                  <div className="map-pop-sub">📍 {job.city}{job.distance_km != null ? ` · ${job.distance_km.toFixed(1)} km` : ''}</div>
-                  <div className="map-pop-pay">{job.pay_per_worker.toLocaleString()} RSD / worker</div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
-  );
+  return <MapComponents jobs={jobs} userLocation={userLocation} selectedJobId={selectedJobId} onJobClick={onJobClick} />;
 }
