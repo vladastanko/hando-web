@@ -1,18 +1,21 @@
 export function formatDate(val: string, opts?: Intl.DateTimeFormatOptions): string {
   try {
-    return new Date(val).toLocaleDateString('en-GB', opts ?? { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(val).toLocaleDateString('sr-Latn-RS', opts ?? { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return val; }
 }
 
 export function formatTime(val: string): string {
   try {
-    return new Date(`1970-01-01T${val}`).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return new Date(`1970-01-01T${val}`).toLocaleTimeString('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false });
   } catch { return val; }
 }
 
 export function formatDatetime(val: string): string {
   try {
-    return new Date(val).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    const d = new Date(val);
+    const date = d.toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'short', year: 'numeric' });
+    const time = d.toLocaleTimeString('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${date}, ${time}`;
   } catch { return val; }
 }
 

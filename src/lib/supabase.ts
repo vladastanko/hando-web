@@ -132,11 +132,13 @@ export const profiles = {
       const idUrl = await uploadFile(idDocumentFile, `verifications/${userId}/id.${idDocumentFile.name.split('.').pop()}`);
       const selfieUrl = await uploadFile(selfieFile, `verifications/${userId}/selfie.${selfieFile.name.split('.').pop()}`);
 
-      const { error } = await supabase.from('verifications').insert({
+      const { error } = await supabase.from('verifications').upsert({
         user_id: userId,
         id_document_url: idUrl,
         selfie_url: selfieUrl,
-      });
+        submitted_at: new Date().toISOString(),
+        status: 'pending',
+      }, { onConflict: 'user_id' });
 
       if (error) return { data: null, error: error.message };
 

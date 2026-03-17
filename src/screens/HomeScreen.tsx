@@ -26,7 +26,7 @@ export default function HomeScreen({
   jobs, categories, loading, userLocation, locationLoading,
   currentUser, onRefresh, onRequestLocation, onJobApplied, onMessage,
 }: Props) {
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>('split');
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('');
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -64,8 +64,12 @@ export default function HomeScreen({
     if (filters.minRating > 0) list = list.filter(j => (j.poster?.rating_as_poster ?? 0) >= filters.minRating);
     if (filters.minPay > 0) list = list.filter(j => j.pay_per_worker >= filters.minPay);
     if (filters.maxPay < 50000) list = list.filter(j => j.pay_per_worker <= filters.maxPay);
-    if (userLocation && filters.maxDistance < 100)
-      list = list.filter(j => (j.distance_km ?? 999) <= filters.maxDistance);
+    if (filters.maxDistance < 100) {
+      if (userLocation) {
+        list = list.filter(j => (j.distance_km ?? 999) <= filters.maxDistance);
+      }
+      // if no userLocation, can't compute distance — skip filter but show notice
+    }
 
     // Sort
     switch (filters.sortBy) {
@@ -184,9 +188,9 @@ export default function HomeScreen({
               </div>
             </div>
 
-            {/* Map view */}
-            {(view === 'map' || view === 'split') && (
-              <div className="map-wrap" style={{ marginBottom: view === 'split' ? 20 : 0 }}>
+            {/* Map-only view */}
+            {view === 'map' && (
+              <div className="map-wrap">
                 <div className="map-hdr">
                   <span style={{ fontSize: '.875rem', fontWeight: 600 }}>
                     {filtered.filter(j => j.location).length} jobs on map
@@ -206,8 +210,8 @@ export default function HomeScreen({
               </div>
             )}
 
-            {/* List view */}
-            {(view === 'list' || view === 'split') && (
+            {/* List-only view */}
+            {view === 'list' && (
               <>
                 {loading ? (
                   <div className="loading"><span className="spin" />Loading jobs...</div>
@@ -225,6 +229,51 @@ export default function HomeScreen({
                   </div>
                 )}
               </>
+            )}
+
+            {/* Split view — map left, list right, side by side */}
+            {view === 'split' && (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                {/* Map — fixed left column */}
+                <div style={{ flex: '0 0 420px', minWidth: 0 }}>
+                  <div className="map-wrap" style={{ marginBottom: 0 }}>
+                    <div className="map-hdr">
+                      <span style={{ fontSize: '.875rem', fontWeight: 600 }}>
+                        {filtered.filter(j => j.location).length} on map
+                      </span>
+                      {!userLocation && (
+                        <button className="btn btn-s btn-sm" onClick={onRequestLocation}>
+                          📍 Enable location
+                        </button>
+                      )}
+                    </div>
+                    <JobMap
+                      jobs={filtered}
+                      userLocation={userLocation}
+                      selectedJobId={selectedJob?.id}
+                      onJobClick={setSelectedJob}
+                    />
+                  </div>
+                </div>
+                {/* List — scrollable right column */}
+                <div style={{ flex: 1, minWidth: 0, maxHeight: 520, overflowY: 'auto' }}>
+                  {loading ? (
+                    <div className="loading"><span className="spin" />Loading jobs...</div>
+                  ) : filtered.length === 0 ? (
+                    <div className="empty">
+                      <span className="empty-ic">🔍</span>
+                      <span className="empty-t">No jobs found</span>
+                      <span className="empty-s">Try adjusting your search or filters, or check back later.</span>
+                    </div>
+                  ) : (
+                    <div className="jgrid" style={{ gridTemplateColumns: '1fr' }}>
+                      {filtered.map(job => (
+                        <JobCard key={job.id} job={job} onClick={setSelectedJob} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

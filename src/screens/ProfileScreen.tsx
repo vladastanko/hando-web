@@ -95,10 +95,55 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     if (pr.data) onProfileUpdated(pr.data);
   };
 
-  const displayName = profile?.full_name || currentUser.email?.split('@')[0] || 'User';
+  // Verification sub-flows
+  const [emailSent, setEmailSent] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'enter_phone' | 'enter_otp'>('idle');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
+
+  const handleEmailVerify = async () => {
+    // Supabase sends a verification email to the signed-in user's email
+    try {
+      const { error } = await import('../lib/supabase').then(m => m.supabase.auth.resend({ type: 'signup', email: currentUser.email ?? '' }));
+      if (error) { onMessage(error.message, 'error'); return; }
+      setEmailSent(true);
+      onMessage('Verification email sent! Check your inbox.', 'success');
+    } catch {
+      onMessage('Failed to send verification email.', 'error');
+    }
+  };
+
+  const handlePhoneSend = async () => {
+    if (!phoneNumber.trim()) { onMessage('Please enter your phone number.', 'error'); return; }
+    setPhoneLoading(true);
+    const { auth: authLib } = await import('../lib/supabase');
+    const res = await authLib.sendPhoneOtp(phoneNumber.trim());
+    setPhoneLoading(false);
+    if (res.error) { onMessage(String(res.error), 'error'); return; }
+    setPhoneStep('enter_otp');
+    onMessage('OTP sent to your phone.', 'success');
+  };
+
+  const handlePhoneVerify = async () => {
+    if (!otp.trim()) { onMessage('Please enter the OTP code.', 'error'); return; }
+    setPhoneLoading(true);
+    const { auth: authLib } = await import('../lib/supabase');
+    const res = await authLib.verifyPhoneOtp(phoneNumber.trim(), otp.trim());
+    setPhoneLoading(false);
+    if (res.error) { onMessage(String(res.error), 'error'); return; }
+    // Mark phone as verified in profile
+    const { profiles: profilesLib } = await import('../lib/supabase');
+    await profilesLib.update(currentUser.id, { is_phone_verified: true });
+    const pr = await profilesLib.get(currentUser.id);
+    if (pr.data) onProfileUpdated(pr.data);
+    setPhoneStep('idle');
+    onMessage('Phone verified!', 'success');
+  };
 
   // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
   const totalEarnings = (profile as Profile & { total_earnings?: number })?.total_earnings ?? null;
+  const displayName = profile?.full_name || currentUser.email?.split('@')[0] || 'User';
 
 
   const activeRatings = ratingsTab === 'received' ? ratingsReceived : ratingsGiven;
@@ -331,25 +376,88 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           <div className="card">
             <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>Verification Status</div>
-              {([
-                ['✉', 'Email address', profile?.is_email_verified ? 'Verified' : 'Not verified', profile?.is_email_verified],
-                ['📱', 'Phone number', profile?.is_phone_verified ? 'Verified' : 'Not verified', profile?.is_phone_verified],
-                ['🪪', 'Identity (ID card)',
-                  profile?.verification_status === 'verified' ? 'Verified' :
-                  profile?.verification_status === 'pending' ? 'Under review (up to 48h)' : 'Not submitted',
-                  profile?.verification_status === 'verified'],
-              ] as [string, string, string, boolean][]).map(([icon, label, status, ok]) => (
-                <div key={label} className="verif-item">
-                  <div className="verif-l">
-                    <span style={{ fontSize: '1.25rem' }}>{icon}</span>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label}</div>
-                      <div style={{ fontSize: '.75rem', color: ok ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>{status}</div>
+
+              {/* Email */}
+              <div className="verif-item">
+                <div className="verif-l">
+                  <span style={{ fontSize: '1.25rem' }}>✉</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Email address</div>
+                    <div style={{ fontSize: '.75rem', color: profile?.is_email_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
+                      {profile?.is_email_verified ? 'Verified' : emailSent ? 'Email sent — check your inbox' : 'Not verified'}
                     </div>
                   </div>
-                  <span className={`bdg ${ok ? 'bdg-ok' : 'bdg-neu'}`}>{ok ? '✓ Verified' : '–'}</span>
                 </div>
-              ))}
+                {profile?.is_email_verified
+                  ? <span className="bdg bdg-ok">✓ Verified</span>
+                  : <button className="btn btn-s btn-sm" onClick={handleEmailVerify} disabled={emailSent}>
+                      {emailSent ? 'Sent ✓' : 'Verify'}
+                    </button>
+                }
+              </div>
+
+              {/* Phone */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="verif-item">
+                  <div className="verif-l">
+                    <span style={{ fontSize: '1.25rem' }}>📱</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Phone number</div>
+                      <div style={{ fontSize: '.75rem', color: profile?.is_phone_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
+                        {profile?.is_phone_verified ? 'Verified' : 'Not verified'}
+                      </div>
+                    </div>
+                  </div>
+                  {profile?.is_phone_verified
+                    ? <span className="bdg bdg-ok">✓ Verified</span>
+                    : <button className="btn btn-s btn-sm" onClick={() => setPhoneStep(phoneStep === 'idle' ? 'enter_phone' : 'idle')}>
+                        {phoneStep !== 'idle' ? 'Cancel' : 'Verify'}
+                      </button>
+                  }
+                </div>
+                {phoneStep === 'enter_phone' && (
+                  <div style={{ display: 'flex', gap: 8, paddingLeft: 40 }}>
+                    <input
+                      className="inp" placeholder="+381641234567" value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                      style={{ flex: 1, height: 36, fontSize: '.875rem' }}
+                    />
+                    <button className="btn btn-p btn-sm" onClick={handlePhoneSend} disabled={phoneLoading}>
+                      {phoneLoading ? '...' : 'Send OTP'}
+                    </button>
+                  </div>
+                )}
+                {phoneStep === 'enter_otp' && (
+                  <div style={{ display: 'flex', gap: 8, paddingLeft: 40 }}>
+                    <input
+                      className="inp" placeholder="Enter OTP code" value={otp}
+                      onChange={e => setOtp(e.target.value)}
+                      style={{ flex: 1, height: 36, fontSize: '.875rem' }}
+                    />
+                    <button className="btn btn-p btn-sm" onClick={handlePhoneVerify} disabled={phoneLoading}>
+                      {phoneLoading ? '...' : 'Confirm'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ID card status */}
+              <div className="verif-item">
+                <div className="verif-l">
+                  <span style={{ fontSize: '1.25rem' }}>🪪</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Identity (ID card)</div>
+                    <div style={{ fontSize: '.75rem', color: profile?.verification_status === 'verified' ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
+                      {profile?.verification_status === 'verified' ? 'Verified'
+                        : profile?.verification_status === 'pending' ? 'Under review (up to 48h)'
+                        : 'Not submitted'}
+                    </div>
+                  </div>
+                </div>
+                <span className={`bdg ${profile?.verification_status === 'verified' ? 'bdg-ok' : 'bdg-neu'}`}>
+                  {profile?.verification_status === 'verified' ? '✓ Verified' : '–'}
+                </span>
+              </div>
             </div>
           </div>
 

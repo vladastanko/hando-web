@@ -92,6 +92,8 @@ export default function App() {
     loadCategories();
     loadCredits(user.id);
     loadProfile(user.id);
+    // Auto-request location on app open
+    requestLocation();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh jobs + save location when GPS updates
@@ -179,6 +181,7 @@ export default function App() {
               userLocation={userLocation}
               onRequestLocation={requestLocation}
               onCreated={handleJobCreated}
+              onGoToCredits={() => setView('credits')}
               onMessage={(m, t) => toast(m, t ?? 'info')}
             />
           ) : (

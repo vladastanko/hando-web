@@ -131,16 +131,14 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
             <span>Applying costs <strong>3 credits</strong>. You currently have <strong>{currentUser?.credits ?? 0}</strong> credits.</span>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-s btn-fw" onClick={() => setStep('view')}>Back</button>
-            <button
-              className="btn btn-p btn-fw btn-lg"
-              onClick={handleApply}
-              disabled={applying || (currentUser?.credits ?? 0) < 3}
-            >
-              {applying ? 'Sending...' : 'Send Application'}
-            </button>
-          </div>
+          <button
+            className="btn btn-p btn-fw btn-lg"
+            onClick={handleApply}
+            disabled={applying || (currentUser?.credits ?? 0) < 3}
+          >
+            {applying ? 'Sending...' : 'Send Application'}
+          </button>
+          <button className="btn btn-s btn-fw" onClick={() => setStep('view')} style={{ marginTop: 8 }}>Back</button>
         </>
       )}
     </Modal>

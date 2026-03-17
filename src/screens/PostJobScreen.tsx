@@ -9,6 +9,7 @@ interface Props {
   userLocation: UserLocation | null;
   onRequestLocation: () => Promise<void> | void;
   onCreated: () => Promise<void>;
+  onGoToCredits: () => void;
   onMessage: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -37,7 +38,7 @@ const EXTRA_CATEGORIES = [
   { name: 'Other', icon: '📋' },
 ];
 
-export default function PostJobScreen({ categories, creditBalance, userLocation, onRequestLocation, onCreated, onMessage }: Props) {
+export default function PostJobScreen({ categories, creditBalance, userLocation, onRequestLocation, onCreated, onGoToCredits, onMessage }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -243,17 +244,27 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
 
         {/* Footer – submit */}
         <div className="psect">
-          <div className="cred-notice" style={{ marginBottom: 16 }}>
+          <div className="cred-notice" style={{ marginBottom: !canPost ? 10 : 16 }}>
             <span style={{ fontSize: '1.25rem' }}>🪙</span>
             <span>
               Posting costs <strong>10 credits</strong>. Your balance: <strong>{creditBalance} credits</strong>.
               {!canPost && <span style={{ color: 'var(--err)', marginLeft: 6 }}>Insufficient credits.</span>}
             </span>
           </div>
+          {!canPost && (
+            <button
+              className="btn btn-p btn-fw"
+              onClick={onGoToCredits}
+              style={{ marginBottom: 10 }}
+            >
+              🪙 Buy Credits
+            </button>
+          )}
           <button
-            className="btn btn-p btn-fw btn-xl"
+            className="btn btn-xl btn-fw"
             onClick={handleCreate}
             disabled={loading || !canPost}
+            style={{ background: canPost ? undefined : 'var(--bg-ov)', color: canPost ? undefined : 'var(--tx-3)', border: '1px solid var(--border)', cursor: !canPost ? 'not-allowed' : undefined }}
           >
             {loading ? 'Posting...' : 'Post Job — 10 credits'}
           </button>
