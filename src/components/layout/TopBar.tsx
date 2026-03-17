@@ -15,14 +15,33 @@ interface Props {
   onLogout: () => void;
 }
 
+// Handoo icon — H shape with gradient
+function HandooIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fff" stopOpacity="1" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.85)" stopOpacity="1" />
+        </linearGradient>
+      </defs>
+      <g fill="url(#hg)">
+        <rect x="96" y="96" width="96" height="320" rx="24"/>
+        <rect x="320" y="96" width="96" height="320" rx="24"/>
+        <rect x="192" y="208" width="128" height="96" rx="24"/>
+      </g>
+    </svg>
+  );
+}
+
 export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCreditsClick, onProfileClick, onLogout }: Props) {
   const [ddOpen, setDdOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handle = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setDdOpen(false); };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setDdOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   const displayName = profile?.full_name || email?.split('@')[0] || 'Account';
@@ -31,15 +50,16 @@ export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCr
   return (
     <header className="topbar">
       <div className="topbar-in">
-        <div className="tb-brand" onClick={() => {}}>
-          <div className="tb-logo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#fff"/>
-            </svg>
-          </div>
-          <span className="tb-name">Hando</span>
-        </div>
 
+        {/* Brand */}
+        <a className="tb-brand" href="#" onClick={e => e.preventDefault()}>
+          <div className="tb-logo">
+            <HandooIcon size={20} />
+          </div>
+          <span className="tb-name">Handoo</span>
+        </a>
+
+        {/* Mode toggle */}
         <div className="mode-toggle">
           <button className={`mode-btn${mode === 'find' ? ' active' : ''}`} onClick={() => onModeChange('find')}>
             Find work
@@ -49,8 +69,9 @@ export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCr
           </button>
         </div>
 
+        {/* Right actions */}
         <div className="tb-right">
-          <button className="cred-chip" onClick={onCreditsClick}>
+          <button className="cred-chip" onClick={onCreditsClick} title="Buy credits">
             🪙 <span>{creditBalance}</span>
           </button>
 
@@ -85,6 +106,7 @@ export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCr
             )}
           </div>
         </div>
+
       </div>
     </header>
   );

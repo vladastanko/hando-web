@@ -7,6 +7,24 @@ interface Props {
   onSuccess: (user: { id: string; email?: string }) => void;
 }
 
+function HandooIcon({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hga" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fff"/>
+          <stop offset="100%" stopColor="rgba(255,255,255,0.85)"/>
+        </linearGradient>
+      </defs>
+      <g fill="url(#hga)">
+        <rect x="96" y="96" width="96" height="320" rx="24"/>
+        <rect x="320" y="96" width="96" height="320" rx="24"/>
+        <rect x="192" y="208" width="128" height="96" rx="24"/>
+      </g>
+    </svg>
+  );
+}
+
 export default function AuthScreen({ onSuccess }: Props) {
   const [mode, setMode] = useState<Mode>('login');
   const [fullName, setFullName] = useState('');
@@ -37,14 +55,14 @@ export default function AuthScreen({ onSuccess }: Props) {
     setLoading(false);
     if (error) { showMsg(error.message); return; }
     if (data.user && !data.session) {
-      showMsg('Account created! Check your inbox to confirm before signing in.', 'ok');
+      showMsg('Account created! Check your inbox to verify your email before signing in.', 'ok');
     } else if (data.user) {
       onSuccess({ id: data.user.id, email: data.user.email });
     }
   };
 
   const handleForgot = async () => {
-    if (!email.trim()) { showMsg('Enter your email address to reset your password.'); return; }
+    if (!email.trim()) { showMsg('Enter your email to receive a reset link.'); return; }
     setLoading(true); clear();
     const { error } = await auth.resetPassword(email.trim());
     setLoading(false);
@@ -54,35 +72,38 @@ export default function AuthScreen({ onSuccess }: Props) {
 
   const msgBox = msg ? (
     <div style={{
-      padding: '11px 14px', borderRadius: 'var(--r)', fontSize: '.875rem',
+      padding: '11px 14px', borderRadius: 'var(--r)', fontSize: '.875rem', fontWeight: 500,
       background: msgType === 'ok' ? 'var(--ok-s)' : 'var(--err-s)',
-      border: `1px solid ${msgType === 'ok' ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)'}`,
-      color: msgType === 'ok' ? 'var(--ok)' : 'var(--err)',
+      border: `1.5px solid ${msgType === 'ok' ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)'}`,
+      color: msgType === 'ok' ? '#4ade80' : 'var(--err)',
     }}>{msg}</div>
   ) : null;
 
   return (
     <div className="auth-pg">
       <div className="auth-split">
+
+        {/* ── Left hero ────────────────────────────────── */}
         <div className="auth-side">
           <div className="auth-brand">
-            <div className="auth-logo">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#fff"/>
-              </svg>
-            </div>
-            <span className="auth-logo-name">Hando</span>
+            <div className="auth-logo"><HandooIcon size={28} /></div>
+            <span className="auth-logo-name">Handoo</span>
           </div>
-          <h1 className="auth-hl">Local work,<br /><em>instantly connected</em></h1>
-          <p className="auth-sub">Find skilled people nearby or earn money helping your neighbours with real tasks.</p>
+          <h1 className="auth-hl">
+            Local work,<br /><em>done right</em>
+          </h1>
+          <p className="auth-sub">
+            Find skilled people nearby for any physical task — moving, cleaning, delivery, assembly, and more.
+            Or earn money by helping your neighbours.
+          </p>
           <div className="auth-trust">
-            {[
-              ['🔒', 'Verified profiles with real ID confirmation'],
-              ['⭐', 'Trusted ratings from real completed jobs'],
-              ['🗺', 'Map-based matching in your area'],
+            {([
+              ['🔒', 'Verified profiles — real ID and email confirmation'],
+              ['⭐', 'Transparent ratings from completed real jobs'],
+              ['🗺', 'Map-based matching in your neighbourhood'],
               ['💰', 'Fair pay, agreed directly between people'],
-            ].map(([icon, text]) => (
-              <div key={text as string} className="auth-ti">
+            ] as [string, string][]).map(([icon, text]) => (
+              <div key={text} className="auth-ti">
                 <div className="auth-tic">{icon}</div>
                 <span>{text}</span>
               </div>
@@ -90,12 +111,13 @@ export default function AuthScreen({ onSuccess }: Props) {
           </div>
         </div>
 
+        {/* ── Right form ───────────────────────────────── */}
         <div className="auth-card">
           {mode === 'forgot' ? (
             <div className="auth-form">
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: '1.1875rem', fontWeight: 800, marginBottom: 5 }}>Reset your password</div>
-                <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>Enter your email and we'll send a reset link.</div>
+                <div style={{ fontSize: '1.1875rem', fontWeight: 800, marginBottom: 5 }}>Reset password</div>
+                <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>We'll send a link to your email.</div>
               </div>
               <div className="fld">
                 <label className="flb">Email address</label>
@@ -105,9 +127,7 @@ export default function AuthScreen({ onSuccess }: Props) {
               <button className="btn btn-p btn-fw btn-lg" onClick={handleForgot} disabled={loading}>
                 {loading ? 'Sending...' : 'Send reset link'}
               </button>
-              <button className="btn btn-g btn-fw" style={{ marginTop: -4 }} onClick={() => { setMode('login'); clear(); }}>
-                ← Back to sign in
-              </button>
+              <button className="btn btn-g btn-fw" onClick={() => { setMode('login'); clear(); }}>← Back to sign in</button>
             </div>
           ) : (
             <>
@@ -115,6 +135,7 @@ export default function AuthScreen({ onSuccess }: Props) {
                 <button className={`auth-tab${mode === 'login' ? ' on' : ''}`} onClick={() => { setMode('login'); clear(); }}>Sign in</button>
                 <button className={`auth-tab${mode === 'signup' ? ' on' : ''}`} onClick={() => { setMode('signup'); clear(); }}>Register</button>
               </div>
+
               <div className="auth-form">
                 {mode === 'signup' && (
                   <div className="fld">
@@ -128,22 +149,48 @@ export default function AuthScreen({ onSuccess }: Props) {
                 </div>
                 <div className="fld">
                   <label className="flb">Password</label>
-                  <input className="inp" type="password" placeholder={mode === 'signup' ? 'Min. 6 characters' : '••••••••'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())} />
+                  <input
+                    className="inp" type="password"
+                    placeholder={mode === 'signup' ? 'Minimum 6 characters' : '••••••••'}
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())}
+                  />
                 </div>
+
                 {mode === 'login' && (
                   <span className="forgot" onClick={() => { setMode('forgot'); clear(); }}>Forgot password?</span>
                 )}
+
+                {mode === 'signup' && (
+                  <div className="info-box brand" style={{ fontSize: '.8125rem' }}>
+                    <span style={{ flexShrink: 0 }}>ℹ️</span>
+                    <span>After registering, you'll receive a <strong>verification email</strong>. Click the link to activate your account before signing in.</span>
+                  </div>
+                )}
+
                 {msgBox}
-                <button className="btn btn-p btn-fw btn-lg" style={{ marginTop: 4 }} onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading}>
-                  {loading ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Sign in' : 'Create account')}
+
+                <button
+                  className="btn btn-p btn-fw btn-lg"
+                  style={{ marginTop: 4 }}
+                  onClick={mode === 'login' ? handleLogin : handleSignup}
+                  disabled={loading}
+                >
+                  {loading
+                    ? (mode === 'login' ? 'Signing in...' : 'Creating account...')
+                    : (mode === 'login' ? 'Sign in' : 'Create account')}
                 </button>
               </div>
+
               {mode === 'signup' && (
-                <div className="auth-foot">By registering you agree to our Terms of Service and Privacy Policy.</div>
+                <div className="auth-foot">
+                  By registering you agree to our Terms of Service and Privacy Policy.
+                </div>
               )}
             </>
           )}
         </div>
+
       </div>
     </div>
   );

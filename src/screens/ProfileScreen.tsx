@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type ChangeEvent } from 'react';
 import type { Profile, Rating } from '../types';
 import { profiles, ratings as ratingsApi } from '../lib/supabase';
 import { Avatar } from '../components/ui/Avatar';
@@ -14,10 +14,13 @@ interface Props {
 }
 
 type ProfileTab = 'overview' | 'edit' | 'ratings' | 'verification';
+type RatingsTab = 'received' | 'given';
 
 export default function ProfileScreen({ currentUser, profile, onProfileUpdated, onMessage }: Props) {
   const [tab, setTab] = useState<ProfileTab>('overview');
-  const [ratingsList, setRatingsList] = useState<Rating[]>([]);
+  const [ratingsTab, setRatingsTab] = useState<RatingsTab>('received');
+  const [ratingsReceived, setRatingsReceived] = useState<Rating[]>([]);
+  const [ratingsGiven, setRatingsGiven] = useState<Rating[]>([]);
   const [loadingRatings, setLoadingRatings] = useState(false);
 
   // Edit form
@@ -30,8 +33,6 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   const [idFront, setIdFront] = useState<File | null>(null);
   const [idBack, setIdBack] = useState<File | null>(null);
   const [verifying, setVerifying] = useState(false);
-
-  // Avatar
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
@@ -44,8 +45,13 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
   const loadRatings = useCallback(async () => {
     setLoadingRatings(true);
-    const res = await ratingsApi.getForUser(currentUser.id);
-    if (!res.error) setRatingsList(res.data ?? []);
+    const [recv, given] = await Promise.all([
+      ratingsApi.getForUser(currentUser.id),
+      // Ratings the user has given — query by rater_id
+      ratingsApi.getByRater?.(currentUser.id) ?? { data: [], error: null },
+    ]);
+    if (!recv.error) setRatingsReceived(recv.data ?? []);
+    if (!given.error) setRatingsGiven(given.data ?? []);
     setLoadingRatings(false);
   }, [currentUser.id]);
 
@@ -63,10 +69,10 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     setSaving(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
     if (res.data) onProfileUpdated(res.data);
-    onMessage('Profile updated successfully.', 'success');
+    onMessage('Profile updated.', 'success');
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
@@ -84,17 +90,26 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     const res = await profiles.submitVerification(currentUser.id, idFront, idBack);
     setVerifying(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage("Verification submitted. You'll be notified when approved.", 'success');
-    // Refresh profile
+    onMessage("Verification submitted. You'll be notified when approved (up to 48h).", 'success');
     const pr = await profiles.get(currentUser.id);
     if (pr.data) onProfileUpdated(pr.data);
   };
 
   const displayName = profile?.full_name || currentUser.email?.split('@')[0] || 'User';
 
+  // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
+  const totalEarnings = (profile as Profile & { total_earnings?: number })?.total_earnings ?? null;
+
+  const avgRating = ratingsTab === 'received'
+    ? (profile?.rating_as_worker ?? 0)
+    : null;
+
+  const activeRatings = ratingsTab === 'received' ? ratingsReceived : ratingsGiven;
+
   return (
     <div className="pg-n">
-      {/* Profile card */}
+
+      {/* ── Profile header card ───────────────────────── */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="prof-hdr">
           <div style={{ position: 'relative' }}>
@@ -103,17 +118,30 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               <label style={{
                 position: 'absolute', bottom: 0, right: 0,
                 width: 26, height: 26, borderRadius: '50%',
-                background: 'var(--brand)', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', cursor: 'pointer', fontSize: '.75rem',
+                background: 'var(--brand-grad)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: avatarUploading ? 'wait' : 'pointer', fontSize: '.75rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,.4)',
               }}>
-                📷
+                {avatarUploading ? '⏳' : '📷'}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} disabled={avatarUploading} />
               </label>
             )}
           </div>
+
           <div className="prof-info">
             <div className="prof-n">{displayName}</div>
             {profile?.city && <div className="prof-c">📍 {profile.city}</div>}
+
+            {/* Inline rating summary */}
+            {(profile?.rating_as_worker ?? 0) > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <Stars value={profile!.rating_as_worker} />
+                <span style={{ fontWeight: 700, fontSize: '.9375rem' }}>{profile!.rating_as_worker.toFixed(1)}</span>
+                <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>({profile!.total_ratings_worker} ratings)</span>
+              </div>
+            )}
+
             <div className="prof-bdgs">
               <StatusBadge status={profile?.verification_status ?? 'unverified'} />
               {profile?.is_email_verified && <span className="bdg bdg-ok">✉ Email verified</span>}
@@ -122,52 +150,66 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats — 4 cols */}
         <div className="prof-stats">
           <div className="pstat">
             <div className="pstat-v">{profile?.completed_jobs_worker ?? 0}</div>
             <div className="pstat-l">Jobs done</div>
           </div>
           <div className="pstat">
-            <div className="pstat-v">{profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—'}</div>
+            <div className="pstat-v">
+              {profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—'}
+            </div>
             <div className="pstat-l">Worker rating</div>
           </div>
           <div className="pstat">
             <div className="pstat-v">{profile?.completed_jobs_poster ?? 0}</div>
             <div className="pstat-l">Jobs posted</div>
           </div>
+          <div className="pstat">
+            <div className="pstat-v" style={{ fontSize: totalEarnings !== null && totalEarnings > 9999 ? '1rem' : undefined }}>
+              {totalEarnings !== null ? `${totalEarnings.toLocaleString()} RSD` : '—'}
+            </div>
+            <div className="pstat-l">Total earned</div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* ── Tabs ─────────────────────────────────────── */}
       <div className="tabs" style={{ marginBottom: 24 }}>
         {(['overview', 'edit', 'ratings', 'verification'] as ProfileTab[]).map(t => (
           <button key={t} className={`tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
-            {t === 'overview' ? 'Overview' : t === 'edit' ? 'Edit Profile' : t === 'ratings' ? 'Ratings' : 'Verification'}
+            {t === 'overview' ? 'Overview'
+              : t === 'edit' ? 'Edit Profile'
+              : t === 'ratings' ? `Ratings (${(profile?.total_ratings_worker ?? 0) + (profile?.total_ratings_poster ?? 0)})`
+              : 'Verification'}
           </button>
         ))}
       </div>
 
-      {/* OVERVIEW */}
+      {/* ── OVERVIEW ─────────────────────────────────── */}
       {tab === 'overview' && (
         <div className="card">
-          <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[
+          <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {([
               ['👤', 'Full name', displayName],
               ['✉', 'Email', currentUser.email ?? '—'],
               ['📍', 'City', profile?.city || 'Not set'],
-            ].map(([icon, label, val]) => (
-              <div key={label as string} style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+            ] as [string, string, string][]).map(([icon, label, val]) => (
+              <div key={label} style={{
+                display: 'flex', gap: 12, padding: '12px 14px',
+                background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)',
+              }}>
                 <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>{icon}</span>
                 <div>
-                  <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                  <div style={{ fontSize: '.9375rem', fontWeight: 500 }}>{val as string}</div>
+                  <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
+                  <div style={{ fontSize: '.9375rem', fontWeight: 500 }}>{val}</div>
                 </div>
               </div>
             ))}
             {profile?.bio && (
-              <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
-                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 6 }}>📝 Bio</div>
+              <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)' }}>
+                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>📝 Bio</div>
                 <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65 }}>{profile.bio}</div>
               </div>
             )}
@@ -175,7 +217,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         </div>
       )}
 
-      {/* EDIT */}
+      {/* ── EDIT ─────────────────────────────────────── */}
       {tab === 'edit' && (
         <div className="card">
           <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -188,12 +230,12 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               <input className="inp" value={cityField} onChange={e => setCityField(e.target.value)} placeholder="Novi Sad" />
             </div>
             <div className="fld">
-              <label className="flb">Bio</label>
+              <label className="flb">Bio <span style={{ color: 'var(--tx-3)', fontWeight: 400 }}>(optional)</span></label>
               <textarea
                 className="txta"
                 value={bio}
                 onChange={e => setBio(e.target.value)}
-                placeholder="Tell employers a bit about yourself — your skills, experience, availability..."
+                placeholder="Describe your skills, experience and availability..."
                 rows={4}
               />
             </div>
@@ -204,139 +246,181 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         </div>
       )}
 
-      {/* RATINGS */}
+      {/* ── RATINGS ──────────────────────────────────── */}
       {tab === 'ratings' && (
         <div className="card">
-          <div style={{ padding: '18px 20px' }}>
-            {loadingRatings ? (
-              <div className="loading"><span className="spin" />Loading ratings...</div>
-            ) : ratingsList.length === 0 ? (
-              <div className="empty" style={{ padding: '32px 0' }}>
-                <span className="empty-ic">⭐</span>
-                <span className="empty-t">No ratings yet</span>
-                <span className="empty-s">Complete jobs to start receiving ratings from employers and workers.</span>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', gap: 20, marginBottom: 20, padding: '14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', flexWrap: 'wrap' }}>
-                  {profile?.rating_as_worker && profile.rating_as_worker > 0 && (
-                    <div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 4 }}>As worker</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Stars value={profile.rating_as_worker} />
-                        <span style={{ fontWeight: 700 }}>{profile.rating_as_worker.toFixed(1)}</span>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>({profile.total_ratings_worker})</span>
-                      </div>
-                    </div>
-                  )}
-                  {profile?.rating_as_poster && profile.rating_as_poster > 0 && (
-                    <div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 4 }}>As employer</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Stars value={profile.rating_as_poster} />
-                        <span style={{ fontWeight: 700 }}>{profile.rating_as_poster.toFixed(1)}</span>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>({profile.total_ratings_poster})</span>
-                      </div>
-                    </div>
-                  )}
+          <div style={{ padding: '0 20px' }}>
+            {/* Sub-tabs */}
+            <div className="tabs">
+              <button
+                className={`tab${ratingsTab === 'received' ? ' on' : ''}`}
+                onClick={() => setRatingsTab('received')}
+              >
+                Received ({profile?.total_ratings_worker ?? 0})
+              </button>
+              <button
+                className={`tab${ratingsTab === 'given' ? ' on' : ''}`}
+                onClick={() => setRatingsTab('given')}
+              >
+                Given ({ratingsGiven.length})
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding: '0 20px 20px' }}>
+            {/* Average summary */}
+            {ratingsTab === 'received' && (profile?.rating_as_worker ?? 0) > 0 && (
+              <div style={{ display: 'flex', gap: 20, margin: '16px 0', padding: '14px', background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>As worker</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Stars value={profile!.rating_as_worker} />
+                    <span style={{ fontWeight: 800, fontSize: '1rem' }}>{profile!.rating_as_worker.toFixed(1)}</span>
+                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)' }}>({profile!.total_ratings_worker})</span>
+                  </div>
                 </div>
-                {ratingsList.map(r => (
-                  <div key={r.id} className="rating-row">
-                    <Avatar name={r.rater?.full_name ?? '?'} url={r.rater?.avatar_url} size="sm" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 600, fontSize: '.9375rem' }}>{r.rater?.full_name ?? 'User'}</span>
-                        <Stars value={r.score} />
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{timeAgo(r.created_at)}</span>
-                      </div>
-                      {r.comment && <div className="rating-cmt">"{r.comment}"</div>}
+                {(profile?.rating_as_poster ?? 0) > 0 && (
+                  <div>
+                    <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>As employer</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Stars value={profile!.rating_as_poster} />
+                      <span style={{ fontWeight: 800, fontSize: '1rem' }}>{profile!.rating_as_poster.toFixed(1)}</span>
+                      <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)' }}>({profile!.total_ratings_poster})</span>
                     </div>
                   </div>
-                ))}
-              </>
+                )}
+              </div>
+            )}
+
+            {loadingRatings ? (
+              <div className="loading"><span className="spin" />Loading...</div>
+            ) : activeRatings.length === 0 ? (
+              <div className="empty" style={{ padding: '28px 0' }}>
+                <span className="empty-ic">⭐</span>
+                <span className="empty-t">{ratingsTab === 'received' ? 'No ratings received yet' : 'No ratings given yet'}</span>
+                <span className="empty-s">
+                  {ratingsTab === 'received'
+                    ? 'Complete jobs to start receiving ratings.'
+                    : "You haven't rated anyone yet."}
+                </span>
+              </div>
+            ) : (
+              activeRatings.map(r => (
+                <div key={r.id} className="rating-row">
+                  <Avatar name={r.rater?.full_name ?? '?'} url={r.rater?.avatar_url} size="sm" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700 }}>{r.rater?.full_name ?? 'User'}</span>
+                      <Stars value={r.score} />
+                      <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{timeAgo(r.created_at)}</span>
+                    </div>
+                    {r.comment && <div className="rating-cmt">"{r.comment}"</div>}
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: r.score >= 4 ? 'var(--ok)' : r.score >= 3 ? 'var(--warn)' : 'var(--err)', flexShrink: 0 }}>
+                    {r.score}.0
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
       )}
 
-      {/* VERIFICATION */}
+      {/* ── VERIFICATION ─────────────────────────────── */}
       {tab === 'verification' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card">
-            <div style={{ padding: '18px 20px' }}>
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 6 }}>Identity Verification</div>
-                <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65 }}>
-                  Upload your ID card to become a verified user. Verification builds trust with employers and workers.
-                  Your documents are stored securely and never shared publicly.
-                </div>
-              </div>
 
-              {[
-                ['verif-front', 'ID Card — Front side', idFront, setIdFront],
-                ['verif-back', 'ID Card — Back side', idBack, setIdBack],
-              ].map(([id, label, file, setter]) => (
-                <div key={id as string} className="verif-item" style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                    <span style={{ fontSize: '1.25rem' }}>🪪</span>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label as string}</div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2 }}>
-                        {(file as File | null) ? (file as File).name : 'No file selected'}
-                      </div>
-                    </div>
-                  </div>
-                  <label className="btn btn-s btn-sm" style={{ cursor: 'pointer' }}>
-                    {(file as File | null) ? 'Change' : 'Upload'}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      style={{ display: 'none' }}
-                      onChange={e => (setter as (f: File | null) => void)(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                </div>
-              ))}
-
-              <div style={{ marginBottom: 16, padding: '11px 14px', background: 'var(--warn-s)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 'var(--r)', fontSize: '.8125rem', color: 'var(--warn)' }}>
-                ⚠ Document number (JMBG) will be stored securely for verification only. It will never be shown to other users.
-              </div>
-
-              <button
-                className="btn btn-p btn-fw btn-lg"
-                onClick={handleVerification}
-                disabled={verifying || !idFront || !idBack || profile?.verification_status === 'pending' || profile?.verification_status === 'verified'}
-              >
-                {verifying ? 'Submitting...' :
-                  profile?.verification_status === 'verified' ? '✓ Already verified' :
-                  profile?.verification_status === 'pending' ? '⏳ Under review' :
-                  'Submit for verification'}
-              </button>
-            </div>
-          </div>
-
-          {/* Verification items */}
+          {/* Status overview */}
           <div className="card">
             <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4 }}>Verification Status</div>
-              {[
-                ['✉', 'Email', profile?.is_email_verified ? 'Verified' : 'Not verified', profile?.is_email_verified],
+              <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>Verification Status</div>
+              {([
+                ['✉', 'Email address', profile?.is_email_verified ? 'Verified' : 'Not verified', profile?.is_email_verified],
                 ['📱', 'Phone number', profile?.is_phone_verified ? 'Verified' : 'Not verified', profile?.is_phone_verified],
-                ['🪪', 'Identity (ID card)', profile?.verification_status === 'verified' ? 'Verified' : profile?.verification_status === 'pending' ? 'Under review' : 'Not submitted', profile?.verification_status === 'verified'],
-              ].map(([icon, label, status, ok]) => (
-                <div key={label as string} className="verif-item">
+                ['🪪', 'Identity (ID card)',
+                  profile?.verification_status === 'verified' ? 'Verified' :
+                  profile?.verification_status === 'pending' ? 'Under review (up to 48h)' : 'Not submitted',
+                  profile?.verification_status === 'verified'],
+              ] as [string, string, string, boolean][]).map(([icon, label, status, ok]) => (
+                <div key={label} className="verif-item">
                   <div className="verif-l">
-                    <span style={{ fontSize: '1.25rem' }}>{icon as string}</span>
+                    <span style={{ fontSize: '1.25rem' }}>{icon}</span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label as string}</div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2 }}>{status as string}</div>
+                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label}</div>
+                      <div style={{ fontSize: '.75rem', color: ok ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>{status}</div>
                     </div>
                   </div>
-                  <span className={`bdg ${ok ? 'bdg-ok' : 'bdg-neu'}`}>{ok ? '✓' : '–'}</span>
+                  <span className={`bdg ${ok ? 'bdg-ok' : 'bdg-neu'}`}>{ok ? '✓ Verified' : '–'}</span>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* ID upload */}
+          <div className="card">
+            <div style={{ padding: '18px 20px' }}>
+              <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 6 }}>Identity Verification</div>
+              <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65, marginBottom: 16 }}>
+                Upload both sides of your personal ID card. Your documents are stored securely and reviewed manually by the Handoo team. This process takes <strong style={{ color: 'var(--tx)' }}>up to 48 hours</strong>.
+              </div>
+
+              {profile?.verification_status === 'pending' && (
+                <div className="info-box warn" style={{ marginBottom: 16 }}>
+                  <span>⏳</span>
+                  <span>Your documents are currently under review. You'll be notified by email once verification is complete (up to 48h).</span>
+                </div>
+              )}
+
+              {profile?.verification_status === 'verified' && (
+                <div className="info-box ok" style={{ marginBottom: 16 }}>
+                  <span>✅</span>
+                  <span>Your identity has been verified. Your profile shows the verified badge.</span>
+                </div>
+              )}
+
+              {profile?.verification_status !== 'verified' && profile?.verification_status !== 'pending' && (
+                <>
+                  {([
+                    ['verif-front', 'ID Card — Front side', idFront, setIdFront],
+                    ['verif-back', 'ID Card — Back side', idBack, setIdBack],
+                  ] as [string, string, File | null, (f: File | null) => void][]).map(([id, label, file, setter]) => (
+                    <div key={id} className="verif-item" style={{ marginBottom: 10 }}>
+                      <div className="verif-l">
+                        <span style={{ fontSize: '1.25rem' }}>🪪</span>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label}</div>
+                          <div style={{ fontSize: '.75rem', color: file ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
+                            {file ? `✓ ${file.name}` : 'No file selected'}
+                          </div>
+                        </div>
+                      </div>
+                      <label className="btn btn-s btn-sm" style={{ cursor: 'pointer' }}>
+                        {file ? 'Change' : 'Upload'}
+                        <input
+                          type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+                          onChange={e => setter(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                    </div>
+                  ))}
+
+                  <div className="info-box warn" style={{ marginBottom: 16 }}>
+                    <span>⚠️</span>
+                    <span>Your ID number (JMBG) is stored encrypted and used only for identity verification. It is <strong>never shown</strong> to other users.</span>
+                  </div>
+
+                  <button
+                    className="btn btn-p btn-fw btn-lg"
+                    onClick={handleVerification}
+                    disabled={verifying || !idFront || !idBack}
+                  >
+                    {verifying ? 'Submitting...' : 'Submit for Verification'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
         </div>
       )}
     </div>

@@ -50,11 +50,11 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
   const [durationHours, setDurationHours] = useState('2');
   const [loading, setLoading] = useState(false);
 
-  // Populate city from geocode
+  // Populate city AND street from geocode
   useEffect(() => {
-    if (userLocation?.place?.city && !city) {
-      setCity(userLocation.place.city);
-    }
+    if (!userLocation?.place) return;
+    if (!city && userLocation.place.city) setCity(userLocation.place.city);
+    if (!address && userLocation.place.streetName) setAddress(userLocation.place.streetName);
   }, [userLocation]);
 
   const totalPay = (Number(payPerWorker) || 0) * (Number(crewSize) || 1);

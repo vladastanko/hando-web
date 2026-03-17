@@ -438,10 +438,17 @@ export const ratings = {
       .select(`*, rater:profiles!ratings_rater_id_fkey(id, full_name, avatar_url)`)
       .eq('ratee_id', userId)
       .order('created_at', { ascending: false });
-
     if (asRole) query = query.eq('rater_role', asRole === 'worker' ? 'poster' : 'worker');
-
     const { data, error } = await query;
+    return { data: data ?? [], error: error?.message ?? null };
+  },
+
+  getByRater: async (raterId: string): Promise<ApiResponse<Rating[]>> => {
+    const { data, error } = await supabase
+      .from('ratings')
+      .select(`*, rater:profiles!ratings_rater_id_fkey(id, full_name, avatar_url)`)
+      .eq('rater_id', raterId)
+      .order('created_at', { ascending: false });
     return { data: data ?? [], error: error?.message ?? null };
   },
 
