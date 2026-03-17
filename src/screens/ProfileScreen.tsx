@@ -100,9 +100,6 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
   const totalEarnings = (profile as Profile & { total_earnings?: number })?.total_earnings ?? null;
 
-  const avgRating = ratingsTab === 'received'
-    ? (profile?.rating_as_worker ?? 0)
-    : null;
 
   const activeRatings = ratingsTab === 'received' ? ratingsReceived : ratingsGiven;
 
