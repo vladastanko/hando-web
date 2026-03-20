@@ -53,11 +53,45 @@ export default function AuthScreen({ onSuccess }: Props) {
     setLoading(true); clear();
     const { data, error } = await auth.signUp(email.trim(), password, fullName.trim());
     setLoading(false);
-    if (error) { showMsg(error.message); return; }
-    if (data.user && !data.session) {
-      showMsg('Account created! Check your inbox to verify your email before signing in.', 'ok');
-    } else if (data.user) {
-      onSuccess({ id: data.user.id, email: data.user.email });
+    if (error) {
+      // "Database error saving new user" usually means the profile trigger is missing
+      // Provide a helpful message and guidance
+      if (error.message?.toLowerCase().includes('database error')) {
+        showMsg('Registration failed: the database trigger is missing. Please run supabase/005_fixes.sql in your Supabase SQL Editor, then try again.');
+      } else {
+        showMsg(error.message);
+      }
+      return;
+    }
+    if (data.user) {
+      // Try to create profile manually in case trigger doesn't exist
+      try {
+        const { supabase: sb } = await import('../lib/supabase');
+        await sb.from('profiles').upsert({
+          id: data.user.id,
+          email: email.trim(),
+          full_name: fullName.trim(),
+          credits: 20,
+          role: 'both',
+          rating_as_worker: 0,
+          rating_as_poster: 0,
+          total_ratings_worker: 0,
+          total_ratings_poster: 0,
+          completed_jobs_worker: 0,
+          completed_jobs_poster: 0,
+          verification_status: 'unverified',
+          is_email_verified: false,
+          is_phone_verified: false,
+        }, { onConflict: 'id' });
+      } catch {
+        // Trigger already handled it — ignore
+      }
+
+      if (!data.session) {
+        showMsg('Account created! Check your inbox to verify your email before signing in.', 'ok');
+      } else {
+        onSuccess({ id: data.user.id, email: data.user.email });
+      }
     }
   };
 

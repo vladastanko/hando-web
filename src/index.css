@@ -379,16 +379,20 @@ img,svg{display:block}ul,ol{list-style:none}
   background:var(--bg);
   border:1.5px solid var(--brand);
   color:var(--tx);
-  font-family:'Plus Jakarta Sans',sans-serif;font-size:.6875rem;font-weight:800;
-  padding:4px 8px;border-radius:var(--r-sm);white-space:nowrap;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  padding:5px 10px;border-radius:var(--r-sm);white-space:nowrap;
   box-shadow:0 4px 16px rgba(0,0,0,.6);
   cursor:pointer;transition:all var(--tf);
+  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
 }
+.jmap-bub-title{font-size:.6875rem;font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.jmap-bub-pay{font-size:.625rem;font-weight:800;color:var(--brand)}
 .jmap-bub:hover,.jmap-bub.sel{
   background:var(--brand-grad);color:#fff;
   box-shadow:0 4px 20px rgba(79,124,255,.5);
 }
-.map-pop{font-family:'Plus Jakarta Sans',sans-serif;min-width:175px;padding:2px}
+.jmap-bub.sel .jmap-bub-pay,.jmap-bub:hover .jmap-bub-pay{color:#fff;opacity:.85}
+.map-pop{font-family:'Plus Jakarta Sans',sans-serif;min-width:175px;padding:2px;cursor:pointer}
 .map-pop-title{font-weight:800;font-size:.875rem;margin-bottom:5px;color:#111}
 .map-pop-sub{font-size:.75rem;color:#666;margin-bottom:4px}
 .map-pop-pay{font-weight:800;font-size:.9375rem;background:linear-gradient(135deg,#4F7CFF,#8A3FFC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}

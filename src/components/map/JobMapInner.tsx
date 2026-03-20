@@ -6,17 +6,22 @@ import type { Job } from '../../types';
 const DEFAULT_CENTER: [number, number] = [44.8176, 20.4633];
 
 function getCoords(job: Job): [number, number] | null {
-  const lat = job.location?.lat, lng = job.location?.lng;
-  return typeof lat === 'number' && typeof lng === 'number' ? [lat, lng] : null;
+  // Handle both {location: {lat, lng}} (from getNearby RPC) and flat lat/lng fields (from getAll)
+  const lat = job.location?.lat ?? (job as unknown as Record<string, number>).lat;
+  const lng = job.location?.lng ?? (job as unknown as Record<string, number>).lng;
+  return typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0 ? [lat, lng] : null;
 }
 
-function createPin(label: string, selected: boolean) {
+function createPin(label: string, title: string, selected: boolean) {
   return L.divIcon({
     className: 'jmap-pin',
-    html: `<div class="jmap-bub${selected ? ' sel' : ''}">${label}</div>`,
+    html: `<div class="jmap-bub${selected ? ' sel' : ''}">
+      <div class="jmap-bub-title">${title}</div>
+      <div class="jmap-bub-pay">${label}</div>
+    </div>`,
     iconSize: [1, 1] as [number, number],
-    iconAnchor: [24, 20] as [number, number],
-    popupAnchor: [0, -22] as [number, number],
+    iconAnchor: [60, 44] as [number, number],
+    popupAnchor: [0, -46] as [number, number],
   });
 }
 
@@ -75,17 +80,18 @@ export function JobMapInner({ jobs, userLocation, selectedJobId, onJobClick }: P
             <Marker
               key={job.id}
               position={coords}
-              icon={createPin(label, selectedJobId === job.id)}
+              icon={createPin(label, job.title, selectedJobId === job.id)}
               eventHandlers={{ click: () => onJobClick(job) }}
             >
               <Popup>
-                <div className="map-pop">
+                <div className="map-pop" style={{ cursor: 'pointer' }} onClick={() => onJobClick(job)}>
                   <div className="map-pop-title">{job.title}</div>
                   <div className="map-pop-sub">
                     📍 {job.city}
                     {job.distance_km != null ? ` · ${job.distance_km.toFixed(1)} km` : ''}
                   </div>
                   <div className="map-pop-pay">{job.pay_per_worker.toLocaleString()} RSD / worker</div>
+                  <div style={{ marginTop: 8, fontSize: '0.75rem', color: '#5b5ef4', fontWeight: 600 }}>Tap to see details →</div>
                 </div>
               </Popup>
             </Marker>

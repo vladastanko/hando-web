@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { Job, Application, Profile } from '../types';
+import type { Job, Application } from '../types';
 import { jobs, applications, ratings } from '../lib/supabase';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Avatar } from '../components/ui/Avatar';
@@ -8,7 +8,7 @@ import { Modal } from '../components/ui/Modal';
 import { formatDate, formatDatetime, timeAgo } from '../utils/format';
 
 interface Props {
-  currentUser: Profile | null;
+  currentUser: { id: string; email?: string } | null;
   onMessage: (msg: string, type?: 'success' | 'error') => void;
   onCreditChange: () => void;
 }
@@ -32,7 +32,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const [jobsRes, appsRes] = await Promise.all([
       jobs.getByPoster(currentUser.id),

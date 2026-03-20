@@ -227,7 +227,7 @@ export default function App() {
         {/* ── My Jobs / Applications ───────────────────────── */}
         {view === 'applications' && (
           <ApplicationsScreen
-            currentUser={profile}
+            currentUser={profile ?? { id: user.id, email: user.email }}
             onMessage={(m, t) => toast(m, t ?? 'info')}
             onCreditChange={() => loadCredits(user.id)}
           />

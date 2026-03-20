@@ -170,7 +170,12 @@ export const jobs = {
       lng,
       radius_km: radiusKm,
     });
-    return { data: data ?? [], error: error?.message ?? null };
+    // Normalize flat lat/lng → location object
+    const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
+      ...j,
+      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+    }));
+    return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },
 
   getAll: async (filters?: { status?: string; category_id?: string; city?: string }): Promise<ApiResponse<Job[]>> => {
@@ -179,7 +184,7 @@ export const jobs = {
       .select(`
         *,
         category:categories(*),
-        poster:profiles!jobs_poster_id_fkey(id, full_name, avatar_url, rating_as_poster, verification_status)
+        poster:profiles!jobs_poster_id_fkey(id, full_name, avatar_url, rating_as_poster, verification_status, completed_jobs_poster)
       `)
       .order('created_at', { ascending: false });
 
@@ -188,7 +193,12 @@ export const jobs = {
     if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
 
     const { data, error } = await query;
-    return { data: data ?? [], error: error?.message ?? null };
+    // Normalize: Supabase stores lat/lng as flat columns; wrap into location object for map
+    const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
+      ...j,
+      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+    }));
+    return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },
 
   getById: async (id: string): Promise<ApiResponse<Job>> => {
@@ -210,7 +220,11 @@ export const jobs = {
       .select(`*, category:categories(*)`)
       .eq('poster_id', posterId)
       .order('created_at', { ascending: false });
-    return { data: data ?? [], error: error?.message ?? null };
+    const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
+      ...j,
+      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+    }));
+    return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },
 
   create: async (form: CreateJobForm): Promise<ApiResponse<Job>> => {
@@ -393,25 +407,35 @@ export const credits = {
 
     if (!pkg) return { data: null, error: 'Package not found' };
 
-    const { data: profile } = await profiles.get(userId);
-    if (!profile) return { data: null, error: 'Profile not found' };
-
-    const newBalance = profile.credits + pkg.credits;
-
-    const { error: updateError } = await supabase
+    // Get current credits directly — don't fail if profile row is slightly off
+    const { data: profileRow, error: profileErr } = await supabase
       .from('profiles')
-      .update({ credits: newBalance })
-      .eq('id', userId);
+      .select('credits')
+      .eq('id', userId)
+      .single();
 
-    if (updateError) return { data: null, error: updateError.message };
+    if (profileErr || !profileRow) {
+      // Profile row missing — create it with 0 credits then add package credits
+      const { error: upsertErr } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, credits: pkg.credits }, { onConflict: 'id' });
+      if (upsertErr) return { data: null, error: upsertErr.message };
+    } else {
+      const newBalance = (profileRow.credits ?? 0) + pkg.credits;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ credits: newBalance })
+        .eq('id', userId);
+      if (updateError) return { data: null, error: updateError.message };
 
-    await supabase.from('credit_transactions').insert({
-      user_id: userId,
-      amount: pkg.credits,
-      type: 'purchase',
-      description: `Purchased ${pkg.credits} credits for ${pkg.price_rsd} RSD`,
-      balance_after: newBalance,
-    });
+      await supabase.from('credit_transactions').insert({
+        user_id: userId,
+        amount: pkg.credits,
+        type: 'purchase',
+        description: `Purchased ${pkg.credits} credits for ${pkg.price_rsd} RSD`,
+        balance_after: newBalance,
+      });
+    }
 
     return { data: true, error: null };
   },

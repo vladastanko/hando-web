@@ -103,9 +103,12 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   const [phoneLoading, setPhoneLoading] = useState(false);
 
   const handleEmailVerify = async () => {
-    // Supabase sends a verification email to the signed-in user's email
     try {
-      const { error } = await import('../lib/supabase').then(m => m.supabase.auth.resend({ type: 'signup', email: currentUser.email ?? '' }));
+      const { supabase: sb } = await import('../lib/supabase');
+      const { error } = await sb.auth.resend({
+        type: 'signup',
+        email: currentUser.email ?? '',
+      });
       if (error) { onMessage(error.message, 'error'); return; }
       setEmailSent(true);
       onMessage('Verification email sent! Check your inbox.', 'success');
