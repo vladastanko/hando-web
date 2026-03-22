@@ -170,17 +170,18 @@ export const jobs = {
       lng,
       radius_km: radiusKm,
     });
-    // Normalize flat lat/lng → location object
+    // RPC returns lat/lng as flat numbers → wrap into location object
     const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
       ...j,
-      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+      location: (j.lat && j.lng) ? { lat: Number(j.lat), lng: Number(j.lng) } : null,
     }));
     return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },
 
   getAll: async (filters?: { status?: string; category_id?: string; city?: string }): Promise<ApiResponse<Job[]>> => {
+    // Use the jobs_with_coords view that extracts PostGIS lat/lng
     let query = supabase
-      .from('jobs')
+      .from('jobs_with_coords')
       .select(`
         *,
         category:categories(*),
@@ -193,10 +194,9 @@ export const jobs = {
     if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
 
     const { data, error } = await query;
-    // Normalize: Supabase stores lat/lng as flat columns; wrap into location object for map
     const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
       ...j,
-      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+      location: (j.lat && j.lng) ? { lat: Number(j.lat), lng: Number(j.lng) } : null,
     }));
     return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },
@@ -216,13 +216,13 @@ export const jobs = {
 
   getByPoster: async (posterId: string): Promise<ApiResponse<Job[]>> => {
     const { data, error } = await supabase
-      .from('jobs')
+      .from('jobs_with_coords')
       .select(`*, category:categories(*)`)
       .eq('poster_id', posterId)
       .order('created_at', { ascending: false });
     const normalized = (data ?? []).map((j: Record<string, unknown>) => ({
       ...j,
-      location: j.location ?? (j.lat && j.lng ? { lat: j.lat, lng: j.lng } : null),
+      location: (j.lat && j.lng) ? { lat: Number(j.lat), lng: Number(j.lng) } : null,
     }));
     return { data: normalized as unknown as Job[], error: error?.message ?? null };
   },

@@ -97,51 +97,52 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
   // Verification sub-flows
   const [emailSent, setEmailSent] = useState(false);
-  const [phoneStep, setPhoneStep] = useState<'idle' | 'enter_phone' | 'enter_otp'>('idle');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '');
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'enter_phone'>('idle');
   const [phoneLoading, setPhoneLoading] = useState(false);
 
   const handleEmailVerify = async () => {
+    setEmailLoading(true);
     try {
       const { supabase: sb } = await import('../lib/supabase');
       const { error } = await sb.auth.resend({
         type: 'signup',
         email: currentUser.email ?? '',
       });
-      if (error) { onMessage(error.message, 'error'); return; }
+      if (error) {
+        // If email is already confirmed, Supabase returns an error — mark as verified
+        if (error.message?.includes('already confirmed') || error.message?.includes('Email link')) {
+          const { profiles: pl } = await import('../lib/supabase');
+          await pl.update(currentUser.id, { is_email_verified: true });
+          const pr = await pl.get(currentUser.id);
+          if (pr.data) onProfileUpdated(pr.data);
+          onMessage('Email is already verified!', 'success');
+        } else {
+          onMessage('Could not send email: ' + error.message, 'error');
+        }
+        setEmailLoading(false);
+        return;
+      }
       setEmailSent(true);
       onMessage('Verification email sent! Check your inbox.', 'success');
     } catch {
       onMessage('Failed to send verification email.', 'error');
     }
+    setEmailLoading(false);
   };
 
-  const handlePhoneSend = async () => {
+  // Phone: save number to profile (real OTP requires Twilio — not configured)
+  const handlePhoneSave = async () => {
     if (!phoneNumber.trim()) { onMessage('Please enter your phone number.', 'error'); return; }
     setPhoneLoading(true);
-    const { auth: authLib } = await import('../lib/supabase');
-    const res = await authLib.sendPhoneOtp(phoneNumber.trim());
+    const { profiles: pl } = await import('../lib/supabase');
+    const res = await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
     setPhoneLoading(false);
-    if (res.error) { onMessage(String(res.error), 'error'); return; }
-    setPhoneStep('enter_otp');
-    onMessage('OTP sent to your phone.', 'success');
-  };
-
-  const handlePhoneVerify = async () => {
-    if (!otp.trim()) { onMessage('Please enter the OTP code.', 'error'); return; }
-    setPhoneLoading(true);
-    const { auth: authLib } = await import('../lib/supabase');
-    const res = await authLib.verifyPhoneOtp(phoneNumber.trim(), otp.trim());
-    setPhoneLoading(false);
-    if (res.error) { onMessage(String(res.error), 'error'); return; }
-    // Mark phone as verified in profile
-    const { profiles: profilesLib } = await import('../lib/supabase');
-    await profilesLib.update(currentUser.id, { is_phone_verified: true });
-    const pr = await profilesLib.get(currentUser.id);
-    if (pr.data) onProfileUpdated(pr.data);
+    if (res.error) { onMessage(res.error, 'error'); return; }
+    if (res.data) onProfileUpdated(res.data);
     setPhoneStep('idle');
-    onMessage('Phone verified!', 'success');
+    onMessage('Phone number saved.', 'success');
   };
 
   // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
@@ -387,14 +388,14 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Email address</div>
                     <div style={{ fontSize: '.75rem', color: profile?.is_email_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                      {profile?.is_email_verified ? 'Verified' : emailSent ? 'Email sent — check your inbox' : 'Not verified'}
+                      {profile?.is_email_verified ? `Verified — ${currentUser.email}` : emailSent ? 'Check your inbox for the link' : `Not verified — ${currentUser.email}`}
                     </div>
                   </div>
                 </div>
                 {profile?.is_email_verified
                   ? <span className="bdg bdg-ok">✓ Verified</span>
-                  : <button className="btn btn-s btn-sm" onClick={handleEmailVerify} disabled={emailSent}>
-                      {emailSent ? 'Sent ✓' : 'Verify'}
+                  : <button className="btn btn-s btn-sm" onClick={handleEmailVerify} disabled={emailSent || emailLoading}>
+                      {emailLoading ? '...' : emailSent ? 'Sent ✓' : 'Send link'}
                     </button>
                 }
               </div>
@@ -407,14 +408,14 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Phone number</div>
                       <div style={{ fontSize: '.75rem', color: profile?.is_phone_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                        {profile?.is_phone_verified ? 'Verified' : 'Not verified'}
+                        {profile?.is_phone_verified ? `Saved — ${profile.phone ?? ''}` : 'Not added'}
                       </div>
                     </div>
                   </div>
                   {profile?.is_phone_verified
-                    ? <span className="bdg bdg-ok">✓ Verified</span>
+                    ? <button className="btn btn-s btn-sm" onClick={() => setPhoneStep('enter_phone')}>Edit</button>
                     : <button className="btn btn-s btn-sm" onClick={() => setPhoneStep(phoneStep === 'idle' ? 'enter_phone' : 'idle')}>
-                        {phoneStep !== 'idle' ? 'Cancel' : 'Verify'}
+                        {phoneStep !== 'idle' ? 'Cancel' : 'Add'}
                       </button>
                   }
                 </div>
@@ -425,20 +426,8 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                       onChange={e => setPhoneNumber(e.target.value)}
                       style={{ flex: 1, height: 36, fontSize: '.875rem' }}
                     />
-                    <button className="btn btn-p btn-sm" onClick={handlePhoneSend} disabled={phoneLoading}>
-                      {phoneLoading ? '...' : 'Send OTP'}
-                    </button>
-                  </div>
-                )}
-                {phoneStep === 'enter_otp' && (
-                  <div style={{ display: 'flex', gap: 8, paddingLeft: 40 }}>
-                    <input
-                      className="inp" placeholder="Enter OTP code" value={otp}
-                      onChange={e => setOtp(e.target.value)}
-                      style={{ flex: 1, height: 36, fontSize: '.875rem' }}
-                    />
-                    <button className="btn btn-p btn-sm" onClick={handlePhoneVerify} disabled={phoneLoading}>
-                      {phoneLoading ? '...' : 'Confirm'}
+                    <button className="btn btn-p btn-sm" onClick={handlePhoneSave} disabled={phoneLoading}>
+                      {phoneLoading ? '...' : 'Save'}
                     </button>
                   </div>
                 )}
