@@ -99,7 +99,8 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '');
-  const [phoneStep, setPhoneStep] = useState<'idle' | 'enter_phone'>('idle');
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'enter_phone' | 'enter_otp'>('idle');
+  const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
 
   const handleEmailVerify = async () => {
@@ -111,7 +112,6 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         email: currentUser.email ?? '',
       });
       if (error) {
-        // If email is already confirmed, Supabase returns an error — mark as verified
         if (error.message?.includes('already confirmed') || error.message?.includes('Email link')) {
           const { profiles: pl } = await import('../lib/supabase');
           await pl.update(currentUser.id, { is_email_verified: true });
@@ -132,17 +132,58 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     setEmailLoading(false);
   };
 
-  // Phone: save number to profile (real OTP requires Twilio — not configured)
-  const handlePhoneSave = async () => {
+  const handlePhoneSend = async () => {
     if (!phoneNumber.trim()) { onMessage('Please enter your phone number.', 'error'); return; }
     setPhoneLoading(true);
-    const { profiles: pl } = await import('../lib/supabase');
-    const res = await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
+    try {
+      const { auth: authLib } = await import('../lib/supabase');
+      const res = await authLib.sendPhoneOtp(phoneNumber.trim());
+      if (res.error) {
+        // Twilio not configured — fall back to saving number directly
+        const errMsg = String((res.error as { message?: string })?.message ?? res.error);
+        if (errMsg.includes('Unsupported') || errMsg.includes('phone provider') || errMsg.includes('not enabled')) {
+          // Save directly without OTP
+          const { profiles: pl } = await import('../lib/supabase');
+          const upd = await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
+          if (upd.data) onProfileUpdated(upd.data);
+          setPhoneStep('idle');
+          onMessage('Phone number saved. (OTP requires Twilio — see PROVIDERS.md)', 'success');
+        } else {
+          onMessage('Could not send OTP: ' + errMsg, 'error');
+        }
+        setPhoneLoading(false);
+        return;
+      }
+      setPhoneStep('enter_otp');
+      onMessage('OTP sent! Check your SMS.', 'success');
+    } catch {
+      onMessage('Failed to send OTP.', 'error');
+    }
     setPhoneLoading(false);
-    if (res.error) { onMessage(res.error, 'error'); return; }
-    if (res.data) onProfileUpdated(res.data);
-    setPhoneStep('idle');
-    onMessage('Phone number saved.', 'success');
+  };
+
+  const handlePhoneVerify = async () => {
+    if (!phoneOtp.trim()) { onMessage('Please enter the OTP code.', 'error'); return; }
+    setPhoneLoading(true);
+    try {
+      const { auth: authLib } = await import('../lib/supabase');
+      const res = await authLib.verifyPhoneOtp(phoneNumber.trim(), phoneOtp.trim());
+      if (res.error) {
+        onMessage('Invalid code: ' + String((res.error as { message?: string })?.message ?? res.error), 'error');
+        setPhoneLoading(false);
+        return;
+      }
+      const { profiles: pl } = await import('../lib/supabase');
+      await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
+      const pr = await pl.get(currentUser.id);
+      if (pr.data) onProfileUpdated(pr.data);
+      setPhoneStep('idle');
+      setPhoneOtp('');
+      onMessage('Phone verified!', 'success');
+    } catch {
+      onMessage('Verification failed.', 'error');
+    }
+    setPhoneLoading(false);
   };
 
   // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
@@ -412,11 +453,11 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                       </div>
                     </div>
                   </div>
-                  {profile?.is_phone_verified
-                    ? <button className="btn btn-s btn-sm" onClick={() => setPhoneStep('enter_phone')}>Edit</button>
-                    : <button className="btn btn-s btn-sm" onClick={() => setPhoneStep(phoneStep === 'idle' ? 'enter_phone' : 'idle')}>
-                        {phoneStep !== 'idle' ? 'Cancel' : 'Add'}
+                  {phoneStep === 'idle'
+                    ? <button className="btn btn-s btn-sm" onClick={() => setPhoneStep('enter_phone')}>
+                        {profile?.is_phone_verified ? 'Edit' : 'Add'}
                       </button>
+                    : <button className="btn btn-s btn-sm" onClick={() => { setPhoneStep('idle'); setPhoneOtp(''); }}>Cancel</button>
                   }
                 </div>
                 {phoneStep === 'enter_phone' && (
@@ -426,9 +467,25 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                       onChange={e => setPhoneNumber(e.target.value)}
                       style={{ flex: 1, height: 36, fontSize: '.875rem' }}
                     />
-                    <button className="btn btn-p btn-sm" onClick={handlePhoneSave} disabled={phoneLoading}>
-                      {phoneLoading ? '...' : 'Save'}
+                    <button className="btn btn-p btn-sm" onClick={handlePhoneSend} disabled={phoneLoading}>
+                      {phoneLoading ? '...' : 'Send OTP'}
                     </button>
+                  </div>
+                )}
+                {phoneStep === 'enter_otp' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 40 }}>
+                    <div style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>SMS sent to {phoneNumber}</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        className="inp" placeholder="Enter 6-digit code" value={phoneOtp}
+                        onChange={e => setPhoneOtp(e.target.value)}
+                        style={{ flex: 1, height: 36, fontSize: '.875rem', letterSpacing: '0.1em' }}
+                        maxLength={6}
+                      />
+                      <button className="btn btn-p btn-sm" onClick={handlePhoneVerify} disabled={phoneLoading}>
+                        {phoneLoading ? '...' : 'Verify'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

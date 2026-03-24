@@ -65,7 +65,7 @@ export default function App() {
   const loadJobs = useCallback(async () => {
     setJobsLoading(true);
     const res = userLocation
-      ? await jobsApi.getNearby(userLocation.lat, userLocation.lng, 30)
+      ? await jobsApi.getNearby(userLocation.lat, userLocation.lng, 100)
       : await jobsApi.getAll({ status: 'open' });
     if (!res.error) setJobsList((res.data as Job[]) ?? []);
     setJobsLoading(false);

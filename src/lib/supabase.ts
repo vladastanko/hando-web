@@ -164,10 +164,10 @@ export const profiles = {
 // ============================================================
 
 export const jobs = {
-  getNearby: async (lat: number, lng: number, radiusKm = 10): Promise<ApiResponse<Job[]>> => {
+  getNearby: async (lat: number, lng: number, radiusKm = 50): Promise<ApiResponse<Job[]>> => {
     const { data, error } = await supabase.rpc('get_nearby_jobs', {
-      lat,
-      lng,
+      p_lat: lat,
+      p_lng: lng,
       radius_km: radiusKm,
     });
     // RPC returns lat/lng as flat numbers → wrap into location object
