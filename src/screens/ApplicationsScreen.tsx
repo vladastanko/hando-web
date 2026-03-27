@@ -30,6 +30,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
   const [rateComment, setRateComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // Edit description
+  const [editJob, setEditJob] = useState<Job | null>(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!currentUser) {
@@ -92,6 +96,22 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     setActionLoading(null);
     if (res.error) { onMessage(res.error, 'error'); return; }
     onMessage('Job marked as completed.', 'success');
+    load();
+  };
+
+  const openEdit = (job: Job) => {
+    setEditJob(job);
+    setEditDesc(job.description ?? '');
+  };
+
+  const handleEditSave = async () => {
+    if (!editJob) return;
+    setEditSaving(true);
+    const res = await jobs.update(editJob.id, { description: editDesc.trim() });
+    setEditSaving(false);
+    if (res.error) { onMessage(res.error, 'error'); return; }
+    onMessage('Description updated.', 'success');
+    setEditJob(null);
     load();
   };
 
@@ -223,16 +243,28 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{timeAgo(job.created_at)}</span>
                       </div>
                       <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>{job.title}</div>
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
                         <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>📍 {job.city}</span>
                         <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>💰 {job.pay_per_worker.toLocaleString()} RSD</span>
                         <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>🗓 {formatDatetime(job.scheduled_date)}</span>
                         <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>👥 {job.accepted_workers}/{job.crew_size}</span>
                       </div>
+                      {/* Posted / updated timestamps */}
+                      <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>📌 Posted {timeAgo(job.created_at)}</span>
+                        {job.updated_at && job.updated_at !== job.created_at && (
+                          <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>✏️ Updated {timeAgo(job.updated_at)}</span>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button className="btn btn-s btn-sm" onClick={() => openApplicants(job)}>
                           View applicants
                         </button>
+                        {(job.status === 'open' || job.status === 'in_progress') && (
+                          <button className="btn btn-s btn-sm" onClick={() => openEdit(job)}>
+                            ✏️ Edit description
+                          </button>
+                        )}
                         {job.status === 'in_progress' && (
                           <button
                             className="btn btn-ok btn-sm"
@@ -357,6 +389,28 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           <button className="btn btn-s btn-fw" onClick={() => setRateOpen(false)}>Cancel</button>
           <button className="btn btn-p btn-fw" onClick={submitRating}>Submit Rating</button>
         </div>
+      </Modal>
+
+      {/* Edit description modal */}
+      <Modal open={!!editJob} onClose={() => setEditJob(null)} title={`Edit: "${editJob?.title ?? ''}"`}>
+        <div className="info-box warn" style={{ marginBottom: 12 }}>
+          <span>ℹ️</span>
+          <span>Only the description can be edited. Pay, crew size and date cannot be changed after posting.</span>
+        </div>
+        <div className="fld">
+          <label className="flb">Description</label>
+          <textarea
+            className="txta"
+            value={editDesc}
+            onChange={e => setEditDesc(e.target.value)}
+            rows={5}
+            placeholder="Describe what needs to be done..."
+          />
+        </div>
+        <button className="btn btn-p btn-fw btn-lg" onClick={handleEditSave} disabled={editSaving}>
+          {editSaving ? 'Saving...' : 'Save changes'}
+        </button>
+        <button className="btn btn-s btn-fw" onClick={() => setEditJob(null)} style={{ marginTop: 8 }}>Cancel</button>
       </Modal>
     </div>
   );

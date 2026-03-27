@@ -397,8 +397,6 @@ export const credits = {
   },
 
   purchase: async (packageId: string, userId: string): Promise<ApiResponse<boolean>> => {
-    // In production: integrate with payment gateway (Stripe, etc.)
-    // For MVP: simulate purchase
     const { data: pkg } = await supabase
       .from('credit_packages')
       .select('*')
@@ -407,7 +405,6 @@ export const credits = {
 
     if (!pkg) return { data: null, error: 'Package not found' };
 
-    // Get current credits directly — don't fail if profile row is slightly off
     const { data: profileRow, error: profileErr } = await supabase
       .from('profiles')
       .select('credits')
@@ -415,27 +412,24 @@ export const credits = {
       .single();
 
     if (profileErr || !profileRow) {
-      // Profile row missing — create it with 0 credits then add package credits
-      const { error: upsertErr } = await supabase
-        .from('profiles')
-        .upsert({ id: userId, credits: pkg.credits }, { onConflict: 'id' });
-      if (upsertErr) return { data: null, error: upsertErr.message };
-    } else {
-      const newBalance = (profileRow.credits ?? 0) + pkg.credits;
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ credits: newBalance })
-        .eq('id', userId);
-      if (updateError) return { data: null, error: updateError.message };
-
-      await supabase.from('credit_transactions').insert({
-        user_id: userId,
-        amount: pkg.credits,
-        type: 'purchase',
-        description: `Purchased ${pkg.credits} credits for ${pkg.price_rsd} RSD`,
-        balance_after: newBalance,
-      });
+      return { data: null, error: 'Profile not found. Please refresh the page and try again.' };
     }
+
+    const newBalance = (profileRow.credits ?? 0) + pkg.credits;
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ credits: newBalance })
+      .eq('id', userId);
+
+    if (updateError) return { data: null, error: updateError.message };
+
+    await supabase.from('credit_transactions').insert({
+      user_id: userId,
+      amount: pkg.credits,
+      type: 'purchase',
+      description: `Purchased ${pkg.credits} credits for ${pkg.price_rsd} RSD`,
+      balance_after: newBalance,
+    });
 
     return { data: true, error: null };
   },
