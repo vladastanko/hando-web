@@ -17,6 +17,7 @@ import ApplicationsScreen from './screens/ApplicationsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CreditsScreen from './screens/CreditsScreen';
 import InboxScreen from './screens/InboxScreen';
+import AdminScreen from './screens/AdminScreen';
 
 type AppMode = 'find' | 'post';
 type View    = TabKey | 'credits';
@@ -133,6 +134,12 @@ export default function App() {
     setView('applications');
   }, [user, loadJobs, loadCredits]);
 
+  // ─── Admin gate ───────────────────────────────────────────────────────
+  const isAdminMode = new URLSearchParams(window.location.search).get('admin') === '1';
+  if (isAdminMode) {
+    return <AdminScreen onExit={() => window.history.replaceState({}, '', window.location.pathname)} />;
+  }
+
   // ─── Auth gate ────────────────────────────────────────────────────────
   if (!user) return <AuthScreen onSuccess={setUser} />;
 
@@ -144,12 +151,14 @@ export default function App() {
       <TopBar
         profile={profile}
         email={user.email}
+        userId={user.id}
         creditBalance={creditBalance}
         mode={appMode}
         onModeChange={handleModeChange}
         onCreditsClick={() => setView('credits')}
         onProfileClick={() => navTo('profile')}
         onLogout={handleLogout}
+        onNavigate={(v) => navTo(v as Parameters<typeof navTo>[0])}
       />
 
       <ToastArea toasts={toasts} />
@@ -166,6 +175,7 @@ export default function App() {
             </div>
             <CreditsScreen
               userId={user.id}
+              userEmail={user.email}
               balance={creditBalance}
               onPurchased={() => loadCredits(user.id)}
               onMessage={(m, t) => toast(m, t ?? 'info')}
@@ -231,6 +241,7 @@ export default function App() {
             currentUser={profile ?? { id: user.id, email: user.email }}
             onMessage={(m, t) => toast(m, t ?? 'info')}
             onCreditChange={() => loadCredits(user.id)}
+            onOpenChat={() => navTo('inbox')}
           />
         )}
 

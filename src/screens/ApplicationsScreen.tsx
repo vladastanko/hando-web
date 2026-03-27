@@ -11,6 +11,7 @@ interface Props {
   currentUser: { id: string; email?: string } | null;
   onMessage: (msg: string, type?: 'success' | 'error') => void;
   onCreditChange: () => void;
+  onOpenChat?: () => void;
 }
 
 type MyTab = 'posted' | 'applied';
@@ -24,7 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
   withdrawn: 'var(--tx-3)',
 };
 
-export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc }: Props) {
+export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc, onOpenChat }: Props) {
   const [myTab,          setMyTab]          = useState<MyTab>('applied');
   const [postedTab,      setPostedTab]      = useState<PostedTab>('open');
   const [myJobs,         setMyJobs]         = useState<Job[]>([]);
@@ -254,7 +255,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       {app.status === 'accepted' && !isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
                           <span>✅</span>
-                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--ok)' }}>Accepted — check your inbox for messages from the employer.</span>
+                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--ok)', flex: 1 }}>Accepted — check your inbox.</span>
+                          <button className="btn btn-s btn-sm" onClick={onOpenChat} style={{ flexShrink: 0 }}>
+                            💬 Chat
+                          </button>
                         </div>
                       )}
                       {app.status === 'rejected' && (
@@ -578,8 +582,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status !== 'completed' && (
-                        <div style={{ padding: '10px 13px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--ok)', fontWeight: 600 }}>
-                          ✅ Accepted — conversation started in Inbox
+                        <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                          <div style={{ padding: '10px 13px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--ok)', fontWeight: 600 }}>
+                            ✅ Accepted — conversation started in Inbox
+                          </div>
+                          <button className="btn btn-s btn-fw" onClick={onOpenChat}>
+                            💬 Open Chat
+                          </button>
                         </div>
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status === 'completed' && !ratedIds.has(selectedApp.id) && (

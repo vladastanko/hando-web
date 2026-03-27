@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '../../types';
 import { getInitials } from '../../utils/format';
+import { NotificationBell } from '../ui/NotificationBell';
 
 type Mode = 'find' | 'post';
 
@@ -9,10 +10,12 @@ interface Props {
   email?: string;
   creditBalance: number;
   mode: Mode;
+  userId?: string;
   onModeChange: (m: Mode) => void;
   onCreditsClick: () => void;
   onProfileClick: () => void;
   onLogout: () => void;
+  onNavigate?: (view: string) => void;
 }
 
 // Handoo icon — H shape with gradient
@@ -34,7 +37,7 @@ function HandooIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCreditsClick, onProfileClick, onLogout }: Props) {
+export function TopBar({ profile, email, creditBalance, mode, userId, onModeChange, onCreditsClick, onProfileClick, onLogout, onNavigate }: Props) {
   const [ddOpen, setDdOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -74,6 +77,10 @@ export function TopBar({ profile, email, creditBalance, mode, onModeChange, onCr
           <button className="cred-chip" onClick={onCreditsClick} title="Buy credits">
             🪙 <span>{creditBalance}</span>
           </button>
+
+          {userId && (
+            <NotificationBell userId={userId} onNavigate={onNavigate} />
+          )}
 
           <div ref={ref} style={{ position: 'relative' }}>
             <div className="prof-chip" onClick={() => setDdOpen(v => !v)}>

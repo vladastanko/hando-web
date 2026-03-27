@@ -77,7 +77,7 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
       const other = isA ? c.prof_b?.[0] : c.prof_a?.[0];
       const msgs  = (c.messages ?? []).slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       const last  = msgs[0];
-      const unread = msgs.filter(m => m.sender_id !== currentUser.id && !m.is_read).length;
+      const unread = msgs.filter(m => m.sender_id !== currentUser.id && m.is_read === false).length;
       return {
         id: c.id, job_id: c.job_id,
         job_title: c.job?.[0]?.title ?? 'Job',
