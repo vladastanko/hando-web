@@ -33,6 +33,7 @@ export default function App() {
   const [categories,    setCategories]    = useState<Category[]>([]);
   const [jobsLoading,   setJobsLoading]   = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [inboxUnread,   setInboxUnread]   = useState(0);
 
   const { toasts, toast }                                           = useToast();
   const { location: userLocation, loading: locLoading, request: requestLocation } = useLocation();
@@ -233,14 +234,15 @@ export default function App() {
           />
         )}
 
-        {/* ── Inbox ────────────────────────────────────────── */}
-        {view === 'inbox' && (
+        {/* ── Inbox — keep mounted for realtime unread counts ── */}
+        <div style={{ display: view === 'inbox' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <InboxScreen
             currentUser={user}
             profile={profile}
             onMessage={(m, t) => toast(m, t ?? 'info')}
+            onUnreadChange={setInboxUnread}
           />
-        )}
+        </div>
 
         {/* ── Profile ──────────────────────────────────────── */}
         {view === 'profile' && (
@@ -254,7 +256,7 @@ export default function App() {
 
       </main>
 
-      <BottomNav active={activeTab} onChange={navTo} />
+      <BottomNav active={activeTab} onChange={navTo} badges={{ inbox: inboxUnread }} />
 
     </div>
   );

@@ -6,9 +6,9 @@ interface Props {
   size?: string;
 }
 
-export function Stars({ value, max = 5, clickable, onChange }: Props) {
+export function Stars({ value, max = 5, clickable, onChange, size }: Props) {
   return (
-    <div className="stars">
+    <div className="stars" style={size ? { fontSize: size } : undefined}>
       {Array.from({ length: max }).map((_, i) => (
         <span
           key={i}
