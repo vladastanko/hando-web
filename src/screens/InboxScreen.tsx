@@ -140,16 +140,19 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
 
     setMessages((data as DbMessage[]) ?? []);
 
-    // Mark all received messages as read
-    await supabase
+    // Mark all received messages as read, then immediately refresh badge
+    const { count } = await supabase
       .from('messages')
       .update({ is_read: true })
       .eq('conversation_id', convId)
       .neq('sender_id', currentUser.id)
-      .eq('is_read', false);
+      .eq('is_read', false)
+      .select('id', { count: 'exact', head: true });
 
-    // Refresh badge
-    loadConversations();
+    // Only reload if there were actually unread messages to mark
+    if (count && count > 0) {
+      await loadConversations();
+    }
   }, [currentUser.id, loadConversations]);
 
   // Subscribe to messages in active conv
@@ -167,9 +170,9 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
         setMessages(prev => [...prev, msg]);
 
         if (msg.sender_id !== currentUser.id) {
-          // Mark as read immediately since we're viewing this conv
+          // Mark as read immediately — we're actively viewing this conv
           await supabase.from('messages').update({ is_read: true }).eq('id', msg.id);
-          loadConversations();
+          await loadConversations();
         }
       })
       .subscribe();
