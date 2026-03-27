@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import 'leaflet/dist/leaflet.css';
 import './index.css';
 import { auth, credits as creditsApi, jobs as jobsApi, profiles as profilesApi } from './lib/supabase';
 import type { Category, Job, Profile } from './types';

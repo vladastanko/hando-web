@@ -9,7 +9,7 @@ interface DbMessage {
   conversation_id: string;
   sender_id: string;
   content: string;
-  is_read: boolean;
+  is_read: boolean | null;
   created_at: string;
 }
 
@@ -40,11 +40,15 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
   const [loading,        setLoading]        = useState(true);
   const [chatAvailable,  setChatAvailable]  = useState(true);
   const [sending,        setSending]        = useState(false);
-  const bottomRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLTextAreaElement>(null);
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // ── Load conversations ─────────────────────────────────────
+  const bottomRef   = useRef<HTMLDivElement>(null);
+  const inputRef    = useRef<HTMLTextAreaElement>(null);
+  const activeConvRef = useRef<Conversation | null>(null);
+
+  // Keep ref in sync with state so realtime callbacks have current value
+  useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
+
+  // ── Load conversations ──────────────────────────────────────
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
       .from('conversations')
@@ -66,98 +70,121 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
 
     type RawConv = {
       id: string; job_id: string; participant_a: string; participant_b: string;
-      job: { title: string }[] | null;
+      job: { title: string }[] | { title: string } | null;
       prof_a: { id: string; full_name: string; avatar_url: string | null }[] | null;
       prof_b: { id: string; full_name: string; avatar_url: string | null }[] | null;
       messages: DbMessage[];
     };
 
     const convs: Conversation[] = (data as unknown as RawConv[]).map(c => {
-      const isA  = c.participant_a === currentUser.id;
+      const isA   = c.participant_a === currentUser.id;
       const other = isA ? c.prof_b?.[0] : c.prof_a?.[0];
-      const msgs  = (c.messages ?? []).slice().sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const last  = msgs[0];
+      const msgs  = (c.messages ?? []).slice().sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const last   = msgs[0];
+      // Only count as unread if is_read is explicitly false (not null)
       const unread = msgs.filter(m => m.sender_id !== currentUser.id && m.is_read === false).length;
+
+      // Handle job title whether it's array or object
+      const jobTitle = Array.isArray(c.job) ? c.job[0]?.title : c.job?.title;
+
       return {
-        id: c.id, job_id: c.job_id,
-        job_title: c.job?.[0]?.title ?? 'Job',
-        other_user_id: other?.id ?? '',
-        other_user_name: other?.full_name ?? 'User',
+        id: c.id,
+        job_id: c.job_id,
+        job_title: jobTitle ?? 'Job',
+        other_user_id:     other?.id ?? '',
+        other_user_name:   other?.full_name ?? 'User',
         other_user_avatar: other?.avatar_url ?? null,
-        last_message: last?.content,
+        last_message:    last?.content,
         last_message_at: last?.created_at,
         unread_count: unread,
       };
     }).sort((a, b) => {
-      // Sort by last message time
       if (!a.last_message_at) return 1;
       if (!b.last_message_at) return -1;
       return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
     });
 
     setConversations(convs);
+
+    // Update badge — only real unread messages
     const totalUnread = convs.reduce((s, c) => s + c.unread_count, 0);
     onUnreadChange?.(totalUnread);
+
     setLoading(false);
   }, [currentUser.id, onUnreadChange]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // Subscribe to new messages globally for unread badge
+  // Global realtime for badge — only re-load on new INSERT
   useEffect(() => {
     const channel = supabase
-      .channel(`inbox:${currentUser.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+      .channel(`inbox_badge:${currentUser.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+      }, () => {
         loadConversations();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [currentUser.id, loadConversations]);
 
-  // ── Load + subscribe to messages in active conv ────────────
+  // ── Load messages in active conv ───────────────────────────
   const loadMessages = useCallback(async (convId: string) => {
     const { data } = await supabase
       .from('messages')
       .select('id, conversation_id, sender_id, content, is_read, created_at')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true });
+
     setMessages((data as DbMessage[]) ?? []);
-    // Mark as read
+
+    // Mark all received messages as read
     await supabase
       .from('messages')
       .update({ is_read: true })
       .eq('conversation_id', convId)
-      .neq('sender_id', currentUser.id);
+      .neq('sender_id', currentUser.id)
+      .eq('is_read', false);
+
+    // Refresh badge
     loadConversations();
   }, [currentUser.id, loadConversations]);
 
+  // Subscribe to messages in active conv
   useEffect(() => {
     if (!activeConv) return;
     loadMessages(activeConv.id);
+
     const channel = supabase
       .channel(`msgs:${activeConv.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
-        payload => {
-          const msg = payload.new as DbMessage;
-          setMessages(prev => [...prev, msg]);
-          // Auto mark read if from other user
-          if (msg.sender_id !== currentUser.id) {
-            supabase.from('messages').update({ is_read: true }).eq('id', msg.id);
-            loadConversations();
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [activeConv, loadMessages, currentUser.id, loadConversations]);
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: `conversation_id=eq.${activeConv.id}`,
+      }, async payload => {
+        const msg = payload.new as DbMessage;
+        setMessages(prev => [...prev, msg]);
 
+        if (msg.sender_id !== currentUser.id) {
+          // Mark as read immediately since we're viewing this conv
+          await supabase.from('messages').update({ is_read: true }).eq('id', msg.id);
+          loadConversations();
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeConv?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const openConv = (conv: Conversation) => {
     setActiveConv(conv);
-    inputRef.current?.focus();
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   // ── Send message ───────────────────────────────────────────
@@ -166,13 +193,16 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
     setSending(true);
     const content = inputText.trim();
     setInputText('');
-    await supabase.from('messages').insert({
+
+    const { error } = await supabase.from('messages').insert({
       conversation_id: activeConv.id,
       sender_id: currentUser.id,
       content,
       is_read: false,
     });
+
     setSending(false);
+    if (error) console.error('Send error:', error);
     loadConversations();
   };
 
@@ -183,19 +213,22 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputText(e.target.value);
-    clearTimeout(typingTimer.current);
-  };
-
-  if (loading) return <div className="loading" style={{ height: '60vh' }}><span className="spin" />Loading inbox...</div>;
+  if (loading) return (
+    <div className="loading" style={{ height: '60vh' }}>
+      <span className="spin" />Loading inbox...
+    </div>
+  );
 
   if (!chatAvailable) return (
     <div className="pg-n">
       <div className="empty" style={{ paddingTop: 80 }}>
         <span className="empty-ic">💬</span>
         <span className="empty-t">Chat not enabled</span>
-        <span className="empty-s">Run <code style={{ background: 'var(--bg-ov)', padding: '2px 6px', borderRadius: 4 }}>003_chat.sql</code> in Supabase SQL Editor.</span>
+        <span className="empty-s">
+          Run <code style={{ background: 'var(--bg-ov)', padding: '2px 6px', borderRadius: 4 }}>
+            007_chat_unread.sql
+          </code> in Supabase SQL Editor.
+        </span>
       </div>
     </div>
   );
@@ -205,10 +238,12 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
   return (
     <div className="inbox-layout">
 
-      {/* ── Conversation list ────────────────────────────── */}
+      {/* ── Conversation list ──────────────────────────────── */}
       <div className={`conv-list${activeConv ? ' conv-list-hidden-mobile' : ''}`}>
-        {/* Header */}
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{
+          padding: '14px 16px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-.015em' }}>Messages</span>
             {totalUnread > 0 && (
@@ -220,7 +255,9 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
             )}
           </div>
           {conversations.length > 0 && (
-            <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{conversations.length} chat{conversations.length > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>
+              {conversations.length} chat{conversations.length > 1 ? 's' : ''}
+            </span>
           )}
         </div>
 
@@ -229,7 +266,7 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
             <span className="empty-ic">💬</span>
             <span className="empty-t">No messages yet</span>
             <span className="empty-s" style={{ textAlign: 'center', maxWidth: 200 }}>
-              Conversations start automatically when an employer accepts your application.
+              Conversations start when an employer accepts your application.
             </span>
           </div>
         ) : (
@@ -262,8 +299,13 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
                 </div>
                 <div className="conv-jb">re: {conv.job_title}</div>
                 {conv.last_message && (
-                  <div className="conv-pv" style={{ fontWeight: conv.unread_count > 0 ? 600 : 400, color: conv.unread_count > 0 ? 'var(--tx)' : undefined }}>
-                    {conv.last_message.length > 48 ? conv.last_message.slice(0, 48) + '…' : conv.last_message}
+                  <div className="conv-pv" style={{
+                    fontWeight: conv.unread_count > 0 ? 600 : 400,
+                    color: conv.unread_count > 0 ? 'var(--tx)' : undefined,
+                  }}>
+                    {conv.last_message.length > 48
+                      ? conv.last_message.slice(0, 48) + '…'
+                      : conv.last_message}
                   </div>
                 )}
               </div>
@@ -282,7 +324,6 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
                 className="btn btn-g btn-ic"
                 onClick={() => setActiveConv(null)}
                 style={{ flexShrink: 0 }}
-                title="Back"
               >←</button>
               <Avatar name={activeConv.other_user_name} url={activeConv.other_user_avatar} size="sm" />
               <div>
@@ -298,13 +339,15 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
 
           {/* Messages */}
           <div className="chat-msgs">
-            {/* Job context pill */}
             <div className="chat-jctx">
               💼 <strong>{activeConv.job_title}</strong>
             </div>
 
             {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--tx-3)', fontSize: '.875rem', padding: '32px 0', lineHeight: 1.6 }}>
+              <div style={{
+                textAlign: 'center', color: 'var(--tx-3)', fontSize: '.875rem',
+                padding: '32px 0', lineHeight: 1.6,
+              }}>
                 <div style={{ fontSize: '2rem', marginBottom: 8, opacity: .4 }}>👋</div>
                 Start the conversation — introduce yourself and confirm the details.
               </div>
@@ -313,11 +356,22 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
                 const isSent = msg.sender_id === currentUser.id;
                 const showAvatar = !isSent && (i === 0 || messages[i - 1].sender_id !== msg.sender_id);
                 const isLastInGroup = i === messages.length - 1 || messages[i + 1].sender_id !== msg.sender_id;
+
                 return (
-                  <div key={msg.id} className={`msg${isSent ? ' sent' : ''}`} style={{ marginBottom: isLastInGroup ? 12 : 3 }}>
+                  <div
+                    key={msg.id}
+                    className={`msg${isSent ? ' sent' : ''}`}
+                    style={{ marginBottom: isLastInGroup ? 12 : 3 }}
+                  >
                     {!isSent && (
                       <div style={{ width: 28, flexShrink: 0 }}>
-                        {showAvatar && <Avatar name={activeConv.other_user_name} url={activeConv.other_user_avatar} size="sm" />}
+                        {showAvatar && (
+                          <Avatar
+                            name={activeConv.other_user_name}
+                            url={activeConv.other_user_avatar}
+                            size="sm"
+                          />
+                        )}
                       </div>
                     )}
                     <div>
@@ -334,7 +388,9 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
                       {isLastInGroup && (
                         <div className="msg-tm" style={{ textAlign: isSent ? 'right' : 'left' }}>
                           {timeAgo(msg.created_at)}
-                          {isSent && msg.is_read && <span style={{ marginLeft: 4, color: 'var(--brand)' }}>✓✓</span>}
+                          {isSent && msg.is_read === true && (
+                            <span style={{ marginLeft: 4, color: 'var(--brand)' }}>✓✓</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -352,7 +408,7 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
               className="chat-inp"
               placeholder="Type a message… (Enter to send)"
               value={inputText}
-              onChange={handleInputChange}
+              onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
               style={{ resize: 'none' }}
@@ -365,7 +421,6 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
                 height: 40, width: 40, padding: 0,
                 borderRadius: 'var(--r)', flexShrink: 0,
                 opacity: !inputText.trim() ? .4 : 1,
-                transition: 'opacity var(--tf)',
               }}
             >
               {sending ? <span className="spin" style={{ width: 14, height: 14 }} /> : '↑'}
@@ -375,7 +430,9 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
       ) : (
         <div className="chat-empty">
           <span style={{ fontSize: '2.5rem', opacity: .25 }}>💬</span>
-          <span style={{ fontWeight: 700, color: 'var(--tx-2)', fontSize: '1rem' }}>Select a conversation</span>
+          <span style={{ fontWeight: 700, color: 'var(--tx-2)', fontSize: '1rem' }}>
+            Select a conversation
+          </span>
           <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)', maxWidth: 220, textAlign: 'center', lineHeight: 1.6 }}>
             {conversations.length > 0
               ? 'Choose a conversation from the list to start messaging.'

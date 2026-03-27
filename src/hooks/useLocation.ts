@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { reverseGeocode, type GeoPlace } from '../utils/geocode';
 
 export interface UserLocation { lat: number; lng: number; place?: GeoPlace; }
@@ -7,7 +7,8 @@ export function useLocation() {
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
-  const watchRef = useRef<number | null>(null);
+  const watchId = useRef<number | null>(null);
+  const hasInitial = useRef(false);
 
   const request = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
@@ -17,16 +18,9 @@ export function useLocation() {
         return;
       }
 
-      // Clear any existing watch
-      if (watchRef.current !== null) {
-        navigator.geolocation.clearWatch(watchRef.current);
-        watchRef.current = null;
-      }
-
       setLoading(true);
       setError(null);
 
-      // First: get a fast fix
       navigator.geolocation.getCurrentPosition(
         async pos => {
           const lat = pos.coords.latitude;
@@ -34,33 +28,47 @@ export function useLocation() {
           const place = await reverseGeocode(lat, lng);
           setLocation({ lat, lng, place: place ?? undefined });
           setLoading(false);
+          hasInitial.current = true;
           resolve();
-
-          // Then watch for continuous updates (less aggressive)
-          watchRef.current = navigator.geolocation.watchPosition(
-            async wp => {
-              const wlat = wp.coords.latitude;
-              const wlng = wp.coords.longitude;
-              // Only update if moved > 20m
-              const dlat = Math.abs(wlat - lat);
-              const dlng = Math.abs(wlng - lng);
-              if (dlat > 0.0002 || dlng > 0.0002) {
-                const wplace = await reverseGeocode(wlat, wlng);
-                setLocation({ lat: wlat, lng: wlng, place: wplace ?? undefined });
-              }
-            },
-            _err => { /* silent watch errors */ },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-          );
         },
         err => {
           setError(err.message);
           setLoading(false);
           resolve();
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
       );
     });
+  }, []);
+
+  // Set up watchPosition once after initial fix
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    watchId.current = navigator.geolocation.watchPosition(
+      async pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        // Reverse geocode only on first watch update
+        const place = !hasInitial.current
+          ? await reverseGeocode(lat, lng)
+          : undefined;
+        setLocation(prev => ({
+          lat, lng,
+          place: place ?? prev?.place,
+        }));
+        hasInitial.current = true;
+      },
+      () => { /* silent watch errors */ },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+
+    return () => {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+    };
   }, []);
 
   return { location, loading, error, request };

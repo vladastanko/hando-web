@@ -89,6 +89,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     setActionLoading(null);
     if (res.error) { onMessage(res.error, 'error'); return; }
     onMessage('Applicant accepted! A conversation has started.', 'success');
+
+    // Move job to in_progress when first worker is accepted
+    const job = myJobs.find(j => j.id === jobId);
+    if (job && job.status === 'open') {
+      await jobs.update(jobId, { status: 'in_progress' });
+    }
+
     await refreshPanel(jobId);
     load();
   };

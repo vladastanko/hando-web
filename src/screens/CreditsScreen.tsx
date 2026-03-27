@@ -226,16 +226,17 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
             <div style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
               ⚠️ Payment Reference (required)
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <code style={{
                 fontSize: '1.125rem', fontWeight: 800, letterSpacing: '.08em',
                 color: 'var(--tx)', background: 'var(--bg-ov)',
-                padding: '6px 12px', borderRadius: 'var(--r-sm)', flex: 1,
+                padding: '6px 12px', borderRadius: 'var(--r-sm)', flex: '1 1 auto', minWidth: 0,
               }}>
                 {generateReference(userId, selectedPkg.id)}
               </code>
               <button
                 className="btn btn-s btn-sm"
+                style={{ flexShrink: 0 }}
                 onClick={() => {
                   navigator.clipboard.writeText(generateReference(userId, selectedPkg.id));
                   onMessage('Reference copied!', 'success');
@@ -249,10 +250,11 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-s btn-fw" onClick={() => setSelectedPkg(null)}>Cancel</button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button className="btn btn-s" style={{ flex: '0 0 auto' }} onClick={() => setSelectedPkg(null)}>Cancel</button>
             <button
-              className="btn btn-p btn-fw btn-lg"
+              className="btn btn-p btn-lg"
+              style={{ flex: 1, minWidth: 200, justifyContent: 'center' }}
               onClick={handleSubmitOrder}
               disabled={submitting}
             >
