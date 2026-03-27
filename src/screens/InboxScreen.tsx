@@ -42,7 +42,7 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
   const [sending,        setSending]        = useState(false);
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
-  const typingTimer = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // ── Load conversations ─────────────────────────────────────
   const loadConversations = useCallback(async () => {
