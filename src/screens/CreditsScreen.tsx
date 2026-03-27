@@ -30,7 +30,7 @@ function generateReference(userId: string, packageId: string): string {
   return `HANDO-${userId.slice(0, 6).toUpperCase()}-${packageId.slice(0, 4).toUpperCase()}`;
 }
 
-export default function CreditsScreen({ userId, userEmail, balance, onPurchased, onMessage }: Props) {
+export default function CreditsScreen({ userId, userEmail, balance, onPurchased: _onPurchased, onMessage }: Props) {
   const [packages,       setPackages]       = useState<CreditPackage[]>([]);
   const [transactions,   setTransactions]   = useState<CreditTransaction[]>([]);
   const [loading,        setLoading]        = useState(true);

@@ -1,0 +1,10 @@
+#!/bin/sh
+echo "🔍 TypeScript check..."
+npx tsc --noEmit --skipLibCheck 2>&1 | grep "error TS" | head -10
+if npx tsc --noEmit --skipLibCheck 2>&1 | grep -q "error TS"; then
+  echo ""
+  echo "❌ TypeScript errors found! Fix before committing."
+  echo "   Tip: prefix unused vars/params with _ (e.g. _unused)"
+  exit 1
+fi
+echo "✅ TypeScript OK"
