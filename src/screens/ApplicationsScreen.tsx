@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Job, Application } from '../types';
-import { jobs, applications, ratings, supabase } from '../lib/supabase';
+import { jobs, applications, ratings } from '../lib/supabase';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Avatar } from '../components/ui/Avatar';
 import { Stars } from '../components/ui/Stars';
@@ -478,7 +478,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                               <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginTop: 1 }}>
                                 {timeAgo(app.created_at)}
                               </div>
-                              {app.worker?.rating_as_worker > 0 && (
+                              {app.worker && app.worker.rating_as_worker > 0 && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                                   <Stars value={app.worker.rating_as_worker} size=".625rem" />
                                   <span style={{ fontSize: '.6875rem', color: 'var(--tx-2)' }}>{app.worker.rating_as_worker.toFixed(1)}</span>
