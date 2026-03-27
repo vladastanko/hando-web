@@ -141,19 +141,20 @@ export default function InboxScreen({ currentUser, onUnreadChange }: Props) {
     setMessages((data as DbMessage[]) ?? []);
 
     // Mark all received messages as read, then immediately refresh badge
-    const { count } = await supabase
-      .from('messages')
-      .update({ is_read: true })
-      .eq('conversation_id', convId)
-      .neq('sender_id', currentUser.id)
-      .eq('is_read', false)
-      .select('id', { count: 'exact', head: true });
+const { data: updatedRows } = await supabase
+  .from('messages')
+  .update({ is_read: true })
+  .eq('conversation_id', convId)
+  .neq('sender_id', currentUser.id)
+  .eq('is_read', false)
+  .select('id');
 
-    // Only reload if there were actually unread messages to mark
-    if (count && count > 0) {
-      await loadConversations();
-    }
-  }, [currentUser.id, loadConversations]);
+if (updatedRows && updatedRows.length > 0) {
+    await loadConversations();
+  }
+}, [currentUser.id, loadConversations]);
+
+
 
   // Subscribe to messages in active conv
   useEffect(() => {
