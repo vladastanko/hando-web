@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Job, Application } from '../types';
-import { jobs, applications, ratings } from '../lib/supabase';
+import { jobs, applications, ratings, supabase } from '../lib/supabase';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Avatar } from '../components/ui/Avatar';
 import { Stars } from '../components/ui/Stars';
@@ -25,6 +25,27 @@ const STATUS_COLORS: Record<string, string> = {
   withdrawn: 'var(--tx-3)',
 };
 
+// ── Multi-segment rating categories ─────────────────────────
+interface CategoryScore { key: string; label: string; icon: string; }
+const WORKER_CATEGORIES: CategoryScore[] = [
+  { key: 'score_punctuality',    label: 'Punctuality',    icon: '⏰' },
+  { key: 'score_quality',        label: 'Work quality',   icon: '🔧' },
+  { key: 'score_communication',  label: 'Communication',  icon: '💬' },
+  { key: 'score_reliability',    label: 'Reliability',    icon: '🤝' },
+];
+const POSTER_CATEGORIES: CategoryScore[] = [
+  { key: 'score_payment',       label: 'Payment',         icon: '💰' },
+  { key: 'score_clarity',       label: 'Instructions',    icon: '📋' },
+  { key: 'score_communication', label: 'Communication',   icon: '💬' },
+  { key: 'score_reliability',   label: 'Reliability',     icon: '🤝' },
+];
+
+function avgScores(scores: Record<string, number>): number {
+  const vals = Object.values(scores).filter(v => v > 0);
+  if (!vals.length) return 5;
+  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+}
+
 export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc, onOpenChat }: Props) {
   const [myTab,          setMyTab]          = useState<MyTab>('applied');
   const [postedTab,      setPostedTab]      = useState<PostedTab>('open');
@@ -33,27 +54,28 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
   const [loading,        setLoading]        = useState(true);
   const [actionLoading,  setActionLoading]  = useState<string | null>(null);
 
-  // Applicant panel (replaces modal — full side panel)
   const [panelJob,       setPanelJob]       = useState<Job | null>(null);
   const [applicants,     setApplicants]     = useState<Application[]>([]);
   const [appsLoading,    setAppsLoading]    = useState(false);
   const [sortBy,         setSortBy]         = useState<SortKey>('newest');
   const [selectedApp,    setSelectedApp]    = useState<Application | null>(null);
 
-  // Edit description
   const [editJob,        setEditJob]        = useState<Job | null>(null);
   const [editDesc,       setEditDesc]       = useState('');
   const [editSaving,     setEditSaving]     = useState(false);
 
-  // Rating
+  // Rating state — full multi-segment
   const [rateTarget,     setRateTarget]     = useState<{ app: Application; asRole: 'worker' | 'poster' } | null>(null);
-  const [rateScore,      setRateScore]      = useState(5);
-  const [rateComment,    setRateComment]    = useState('');
+  const [rateScores,     setRateScores]     = useState<Record<string, number>>({});
+  const [ratePublic,     setRatePublic]     = useState('');
+  const [ratePrivate,    setRatePrivate]    = useState('');
   const [rateSubmitting, setRateSubmitting] = useState(false);
   const [ratedIds,       setRatedIds]       = useState<Set<string>>(new Set());
 
-  // Complete confirm
   const [completeTarget, setCompleteTarget] = useState<string | null>(null);
+
+  // FIX: withdraw confirmation modal
+  const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!currentUser) { setLoading(false); return; }
@@ -78,9 +100,17 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     setAppsLoading(false);
   };
 
+  // FIX: refreshPanel also refreshes job data so accepted_workers updates
   const refreshPanel = async (jobId: string) => {
-    const r = await applications.getForJob(jobId);
-    if (!r.error) setApplicants(r.data ?? []);
+    const [ar, jr] = await Promise.all([
+      applications.getForJob(jobId),
+      jobs.getById(jobId),
+    ]);
+    if (!ar.error) setApplicants(ar.data ?? []);
+    if (!jr.error && jr.data) {
+      setPanelJob(prev => prev?.id === jobId ? { ...prev, ...jr.data! } : prev);
+      setMyJobs(prev => prev.map(j => j.id === jobId ? { ...j, ...jr.data! } : j));
+    }
   };
 
   const handleAccept = async (appId: string, jobId: string) => {
@@ -90,7 +120,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     if (res.error) { onMessage(res.error, 'error'); return; }
     onMessage('Applicant accepted! A conversation has started.', 'success');
 
-    // Move job to in_progress when first worker is accepted
     const job = myJobs.find(j => j.id === jobId);
     if (job && job.status === 'open') {
       await jobs.update(jobId, { status: 'in_progress' });
@@ -107,10 +136,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     if (panelJob) await refreshPanel(panelJob.id);
   };
 
-  const handleWithdraw = async (appId: string) => {
-    setActionLoading(appId);
-    const res = await applications.withdraw(appId);
+  // FIX: withdraw shows confirmation modal first
+  const handleWithdrawConfirm = async () => {
+    if (!withdrawTarget) return;
+    setActionLoading(withdrawTarget);
+    const res = await applications.withdraw(withdrawTarget);
     setActionLoading(null);
+    setWithdrawTarget(null);
     if (res.error) { onMessage(res.error, 'error'); return; }
     onMessage('Application withdrawn.', 'success');
     load();
@@ -118,15 +150,16 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
   const handleMarkComplete = async (jobId: string) => {
     setActionLoading(jobId);
-    const res = await jobs.complete(jobId);
+    // FIX: use RPC for server-side completion with notification trigger
+    const { error } = await supabase.rpc('poster_mark_complete', {
+      p_job_id: jobId,
+      p_poster_id: currentUser?.id,
+    });
     setActionLoading(null);
-    if (res.error) { onMessage(res.error, 'error'); return; }
+    if (error) { onMessage(error.message, 'error'); return; }
     onMessage('Job marked as completed! You can now rate workers.', 'success');
     setCompleteTarget(null);
-    if (panelJob?.id === jobId) {
-      const updated = { ...panelJob, status: 'completed' as const };
-      setPanelJob(updated);
-    }
+    await refreshPanel(jobId);
     load();
   };
 
@@ -144,8 +177,12 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
   const openRate = (app: Application, asRole: 'worker' | 'poster') => {
     setRateTarget({ app, asRole });
-    setRateScore(5);
-    setRateComment('');
+    const cats = asRole === 'worker' ? WORKER_CATEGORIES : POSTER_CATEGORIES;
+    const init: Record<string, number> = {};
+    cats.forEach(c => { init[c.key] = 5; });
+    setRateScores(init);
+    setRatePublic('');
+    setRatePrivate('');
   };
 
   const submitRating = async () => {
@@ -154,7 +191,26 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     const { app, asRole } = rateTarget;
     const rateeId = asRole === 'poster' ? app.job?.poster_id : app.worker_id;
     if (!rateeId || !app.job_id) { setRateSubmitting(false); return; }
-    const res = await ratings.submit({ job_id: app.job_id, ratee_id: rateeId, score: rateScore, comment: rateComment.trim() || undefined, rater_role: asRole });
+
+    const overallScore = avgScores(rateScores);
+
+    const res = await ratings.submit({
+      job_id: app.job_id,
+      ratee_id: rateeId,
+      score: overallScore,
+      comment: ratePublic.trim() || undefined,
+      rater_role: asRole,
+    });
+
+    // Save extended fields via direct update (if migration ran)
+    if (res.data?.id) {
+      await supabase.from('ratings').update({
+        public_feedback: ratePublic.trim() || null,
+        private_feedback: ratePrivate.trim() || null,
+        ...rateScores,
+      }).eq('id', res.data.id);
+    }
+
     setRateSubmitting(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
     onMessage('Rating submitted!', 'success');
@@ -182,6 +238,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       <span className="spin" />Loading your jobs...
     </div>
   );
+
+  const rateCategories = rateTarget
+    ? (rateTarget.asRole === 'worker' ? WORKER_CATEGORIES : POSTER_CATEGORIES)
+    : [];
 
   return (
     <div className="pg" style={{ maxWidth: panelJob ? 'none' : undefined }}>
@@ -247,7 +307,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       </div>
 
-                      {/* Your message */}
                       {app.message && (
                         <div style={{
                           padding: '10px 13px', background: 'var(--bg-ov)', borderRadius: 'var(--r)',
@@ -258,7 +317,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       )}
 
-                      {/* Status banner */}
                       {app.status === 'accepted' && !isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
                           <span>✅</span>
@@ -283,8 +341,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 8 }}>
+                        {/* FIX: withdraw opens confirmation modal */}
                         {app.status === 'pending' && (
-                          <button className="btn btn-d btn-sm" onClick={() => handleWithdraw(app.id)} disabled={actionLoading === app.id}>
+                          <button className="btn btn-d btn-sm" onClick={() => setWithdrawTarget(app.id)} disabled={actionLoading === app.id}>
                             {actionLoading === app.id ? '...' : 'Withdraw'}
                           </button>
                         )}
@@ -312,7 +371,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
           {/* Left: job list */}
           <div style={{ flex: panelJob ? '0 0 360px' : '1', minWidth: 0, transition: 'flex var(--tf)' }}>
-            {/* Sub-tabs */}
             <div className="tabs" style={{ marginBottom: 16 }}>
               {(['open', 'in_progress', 'completed'] as PostedTab[]).map(t => {
                 const count = myJobs.filter(j =>
@@ -337,7 +395,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {postedFiltered.map(job => {
-                  const spots = Math.max((job.crew_size ?? 1) - (job.accepted_workers ?? 0), 0);
+                  // FIX: use live acceptedCount from job data
+                  const accepted = job.accepted_workers ?? 0;
+                  const spots = Math.max((job.crew_size ?? 1) - accepted, 0);
                   const isActive = panelJob?.id === job.id;
                   return (
                     <div
@@ -361,7 +421,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: 10 }}>
-                          <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>👥 {job.accepted_workers}/{job.crew_size} accepted</span>
+                          {/* FIX: show real accepted count */}
+                          <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>
+                            👥 {accepted}/{job.crew_size} accepted
+                          </span>
                           {spots > 0 && job.status === 'open' && (
                             <span style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 600 }}>{spots} spot{spots > 1 ? 's' : ''} open</span>
                           )}
@@ -397,7 +460,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                     <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>🗓 {formatDatetime(panelJob.scheduled_date)}</span>
                     <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>⏱ {panelJob.duration_hours}h</span>
                   </div>
-                  {/* Stats row */}
+                  {/* FIX: Stats use live acceptedCount */}
                   <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
                     {[
                       { label: 'Applied', val: applicants.length, color: 'var(--tx)' },
@@ -417,6 +480,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   {(panelJob.status === 'open' || panelJob.status === 'in_progress') && (
                     <button className="btn btn-s btn-sm" onClick={() => openEdit(panelJob)}>✏️ Edit</button>
                   )}
+                  {/* FIX: Complete button available for in_progress jobs */}
                   {panelJob.status === 'in_progress' && (
                     <button className="btn btn-ok btn-sm" onClick={() => setCompleteTarget(panelJob.id)}>
                       ✓ Complete
@@ -425,7 +489,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                 </div>
               </div>
 
-              {/* Sort controls */}
+              {/* Sort */}
               {applicants.length > 1 && (
                 <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>Sort:</span>
@@ -447,7 +511,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                 </div>
               )}
 
-              {/* Applicant list / detail split */}
+              {/* Applicant list / detail */}
               {appsLoading ? (
                 <div className="loading" style={{ padding: '40px 0' }}><span className="spin" />Loading applicants...</div>
               ) : applicants.length === 0 ? (
@@ -458,7 +522,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                 </div>
               ) : (
                 <div style={{ display: 'flex', minHeight: 400 }}>
-                  {/* Applicant list */}
+                  {/* List */}
                   <div style={{ width: 260, borderRight: '1px solid var(--border)', overflowY: 'auto', maxHeight: 520 }}>
                     {sortedApplicants.map(app => {
                       const isSelected = selectedApp?.id === app.id;
@@ -502,10 +566,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                     })}
                   </div>
 
-                  {/* Applicant detail */}
+                  {/* Detail */}
                   {selectedApp ? (
                     <div style={{ flex: 1, padding: '20px', overflowY: 'auto', maxHeight: 520 }}>
-                      {/* Worker header */}
                       <div style={{ display: 'flex', gap: 14, marginBottom: 20, alignItems: 'flex-start' }}>
                         <Avatar name={selectedApp.worker?.full_name ?? '?'} url={selectedApp.worker?.avatar_url} size="lg" />
                         <div style={{ flex: 1 }}>
@@ -531,7 +594,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       </div>
 
-                      {/* Stats grid */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
                         {[
                           { icon: '⭐', label: 'Rating', val: selectedApp.worker?.rating_as_worker ? selectedApp.worker.rating_as_worker.toFixed(1) : '—' },
@@ -545,7 +607,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         ))}
                       </div>
 
-                      {/* Cover message */}
                       {selectedApp.message && (
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>Cover message</div>
@@ -555,7 +616,6 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       )}
 
-                      {/* Worker bio */}
                       {selectedApp.worker?.bio && (
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>About</div>
@@ -563,12 +623,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                       )}
 
-                      {/* Applied time */}
                       <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginBottom: 16 }}>
                         Applied {timeAgo(selectedApp.created_at)}
                       </div>
 
-                      {/* Actions */}
                       {selectedApp.status === 'pending' && (
                         <div style={{ display: 'flex', gap: 10 }}>
                           <button
@@ -596,6 +654,12 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                           <button className="btn btn-s btn-fw" onClick={onOpenChat}>
                             💬 Open Chat
                           </button>
+                          {/* FIX: mark complete also accessible from worker detail */}
+                          {panelJob.status === 'in_progress' && (
+                            <button className="btn btn-ok btn-fw" onClick={() => setCompleteTarget(panelJob.id)}>
+                              🏁 Mark job as completed
+                            </button>
+                          )}
                         </div>
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status === 'completed' && !ratedIds.has(selectedApp.id) && (
@@ -621,6 +685,31 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           )}
         </div>
       )}
+
+      {/* ── Withdraw confirmation modal ───────────────────── */}
+      <Modal open={!!withdrawTarget} onClose={() => setWithdrawTarget(null)} title="Withdraw application?" center>
+        <div style={{ padding: '4px 0 16px' }}>
+          <div style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4 }}>Are you sure?</div>
+              <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.6 }}>
+                The employer will no longer see your application. Credits spent on this application <strong>will not be refunded</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)}>← Go back</button>
+          <button
+            className="btn btn-d btn-fw"
+            onClick={handleWithdrawConfirm}
+            disabled={actionLoading === withdrawTarget}
+          >
+            {actionLoading === withdrawTarget ? 'Withdrawing...' : 'Confirm withdraw'}
+          </button>
+        </div>
+      </Modal>
 
       {/* ── Mark complete confirm ────────────────────────── */}
       <Modal open={!!completeTarget} onClose={() => setCompleteTarget(null)} title="Mark job as complete?" center>
@@ -656,38 +745,87 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
         <button className="btn btn-s btn-fw" onClick={() => setEditJob(null)} style={{ marginTop: 8 }}>Cancel</button>
       </Modal>
 
-      {/* ── Rating modal ─────────────────────────────────── */}
-      <Modal open={!!rateTarget} onClose={() => setRateTarget(null)} title="Leave a rating" center>
-        <div style={{ textAlign: 'center', paddingBottom: 8 }}>
-          <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>
-            {rateTarget?.asRole === 'worker' ? rateTarget?.app.worker?.full_name : 'Employer'}
+      {/* ── Multi-segment Rating modal ───────────────────── */}
+      <Modal open={!!rateTarget} onClose={() => setRateTarget(null)} title="Leave a rating">
+        <div style={{ paddingBottom: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 2 }}>
+            {rateTarget?.asRole === 'worker'
+              ? rateTarget?.app.worker?.full_name
+              : 'Employer'}
           </div>
-          <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 18 }}>
+          <div style={{ fontSize: '.875rem', color: 'var(--tx-3)', marginBottom: 20 }}>
             How was your experience working {rateTarget?.asRole === 'worker' ? 'with this person' : 'for this employer'}?
           </div>
-          {/* Big star selector */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 20 }}>
-            {[1,2,3,4,5].map(n => (
-              <span
-                key={n}
-                onClick={() => setRateScore(n)}
-                style={{
-                  fontSize: '2.25rem', cursor: 'pointer',
-                  color: n <= rateScore ? '#f59e0b' : 'var(--border)',
-                  transition: 'all .1s', filter: n <= rateScore ? 'drop-shadow(0 0 6px rgba(245,158,11,.5))' : 'none',
-                }}
-              >★</span>
+
+          {/* Category scores */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+            {rateCategories.map(cat => (
+              <div key={cat.key}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{cat.icon} {cat.label}</span>
+                  <span style={{ fontSize: '.875rem', fontWeight: 800, color: 'var(--brand)' }}>
+                    {rateScores[cat.key] ?? 5}/5
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <span
+                      key={n}
+                      onClick={() => setRateScores(prev => ({ ...prev, [cat.key]: n }))}
+                      style={{
+                        fontSize: '1.5rem', cursor: 'pointer',
+                        color: n <= (rateScores[cat.key] ?? 5) ? '#f59e0b' : 'var(--border)',
+                        transition: 'all .1s',
+                        filter: n <= (rateScores[cat.key] ?? 5) ? 'drop-shadow(0 0 4px rgba(245,158,11,.4))' : 'none',
+                      }}
+                    >★</span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-          <div style={{ fontSize: '.9375rem', fontWeight: 700, color: rateScore >= 4 ? 'var(--ok)' : rateScore >= 3 ? 'var(--warn)' : '#ef4444', marginBottom: 16 }}>
-            {rateScore === 5 ? 'Excellent!' : rateScore === 4 ? 'Good' : rateScore === 3 ? 'Okay' : rateScore === 2 ? 'Poor' : 'Very Poor'}
+
+          {/* Overall average preview */}
+          <div style={{
+            padding: '8px 12px', background: 'var(--bg-ov)', border: '1px solid var(--border)',
+            borderRadius: 'var(--r)', display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: 18,
+          }}>
+            <span style={{ fontSize: '.875rem', color: 'var(--tx-2)' }}>Overall rating</span>
+            <span style={{ fontWeight: 800, fontSize: '1.0625rem', color: 'var(--brand)' }}>
+              ⭐ {avgScores(rateScores).toFixed(1)}
+            </span>
           </div>
-          <div className="fld" style={{ textAlign: 'left' }}>
-            <label className="flb">Comment <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>(optional)</span></label>
-            <textarea className="txta" placeholder="Share your experience..." value={rateComment} onChange={e => setRateComment(e.target.value)} rows={3} />
+
+          {/* Public feedback */}
+          <div className="fld" style={{ marginBottom: 12 }}>
+            <label className="flb">
+              Public review <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>(visible to everyone)</span>
+            </label>
+            <textarea
+              className="txta"
+              placeholder="Share your experience — this will be visible on their profile..."
+              value={ratePublic}
+              onChange={e => setRatePublic(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {/* Private feedback */}
+          <div className="fld">
+            <label className="flb">
+              Private note <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>(only visible to admins)</span>
+            </label>
+            <textarea
+              className="txta"
+              placeholder="Anything you'd prefer to keep private..."
+              value={ratePrivate}
+              onChange={e => setRatePrivate(e.target.value)}
+              rows={2}
+            />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>Cancel</button>
           <button className="btn btn-p btn-fw" onClick={submitRating} disabled={rateSubmitting}>
             {rateSubmitting ? 'Submitting...' : 'Submit Rating'}
