@@ -880,11 +880,11 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>Cancel</button>
-          <button className="btn btn-p btn-fw" onClick={submitRating} disabled={rateSubmitting}>
-            {rateSubmitting ? 'Submitting...' : 'Submit Rating'}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+          <button className="btn btn-p btn-fw btn-lg" onClick={submitRating} disabled={rateSubmitting}>
+            {rateSubmitting ? '⏳ Slanje...' : '⭐ Pošalji ocenu'}
           </button>
+          <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>Otkaži</button>
         </div>
       </Modal>
 

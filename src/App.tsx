@@ -251,6 +251,7 @@ export default function App() {
             profile={profile}
             onMessage={(m, t) => toast(m, t ?? 'info')}
             onUnreadChange={setInboxUnread}
+            isActive={view === 'inbox'}
           />
         </div>
 
