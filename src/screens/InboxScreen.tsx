@@ -114,25 +114,35 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // FIX: kad korisnik otvori Inbox tab, odmah markuj sve poruke kao read
-  // Ovo rešava problem "uvek pokazuje unread na loginu"
+  // FIX: kad korisnik otvori Inbox tab, odmah markuj sve kao read i resetuj badge
   useEffect(() => {
-    if (!isActive) return;
-    // Mark all unread messages in all conversations as read
-    supabase
-      .from('messages')
-      .update({ is_read: true })
-      .neq('sender_id', currentUser.id)
-      .eq('is_read', false)
-      .then(() => {
-        // Reset badge immediately
-        setConversations(prev => {
-          const updated = prev.map(c => ({ ...c, unread_count: 0 }));
-          onUnreadChange?.(0);
-          return updated;
-        });
+    if (!isActive || conversations.length === 0) return;
+
+    // Nađi sve conversation_id-eve gdje ima unread
+    const convIdsWithUnread = conversations
+      .filter(c => c.unread_count > 0)
+      .map(c => c.id);
+
+    if (convIdsWithUnread.length === 0) return;
+
+    // Markuj svaku konverzaciju posebno (RLS zahteva filter po conversation_id)
+    Promise.all(
+      convIdsWithUnread.map(convId =>
+        supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('conversation_id', convId)
+          .neq('sender_id', currentUser.id)
+          .eq('is_read', false)
+      )
+    ).then(() => {
+      setConversations(prev => {
+        const updated = prev.map(c => ({ ...c, unread_count: 0 }));
+        onUnreadChange?.(0);
+        return updated;
       });
-  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+    });
+  }, [isActive, conversations.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // FIX: listen to both INSERT and UPDATE on messages for badge accuracy
   useEffect(() => {

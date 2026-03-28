@@ -43,7 +43,17 @@ const POSTER_CATEGORIES: CategoryScore[] = [
 function avgScores(scores: Record<string, number>): number {
   const vals = Object.values(scores).filter(v => v > 0);
   if (!vals.length) return 5;
+  // Keep one decimal for display but DB score column is numeric, not smallint
   return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+}
+
+// Category scores must be integers 1-5 (smallint in DB)
+function toIntScores(scores: Record<string, number>): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [k, v] of Object.entries(scores)) {
+    result[k] = Math.round(v); // ensure integer
+  }
+  return result;
 }
 
 export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc, onOpenChat }: Props) {
@@ -226,7 +236,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       await supabase.from('ratings').update({
         public_feedback: ratePublic.trim() || null,
         private_feedback: ratePrivate.trim() || null,
-        ...rateScores,
+        ...toIntScores(rateScores), // FIX: smallint needs integers, not floats
       }).eq('id', res.data.id);
     }
 
@@ -235,6 +245,36 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     onMessage('Rating submitted!', 'success');
     setRatedIds(prev => new Set([...prev, app.id]));
     setRateTarget(null);
+
+    // FIX: force-recalculate ratee profile rating (backup ako DB trigger puca)
+    const rateeIdForUpdate = asRole === 'poster' ? app.job?.poster_id : app.worker_id;
+    if (rateeIdForUpdate) {
+      // Povuci sve ocene za ratee-a i izracunaj prosek
+      const { data: allRatings } = await supabase
+        .from('ratings')
+        .select('score, rater_role')
+        .eq('ratee_id', rateeIdForUpdate);
+
+      if (allRatings && allRatings.length > 0) {
+        const workerRatings = allRatings.filter(r => r.rater_role === 'poster');
+        const posterRatings = allRatings.filter(r => r.rater_role === 'worker');
+
+        const workerAvg = workerRatings.length
+          ? Math.round(workerRatings.reduce((s, r) => s + r.score, 0) / workerRatings.length * 100) / 100
+          : null;
+        const posterAvg = posterRatings.length
+          ? Math.round(posterRatings.reduce((s, r) => s + r.score, 0) / posterRatings.length * 100) / 100
+          : null;
+
+        await supabase.from('profiles').update({
+          ...(workerAvg !== null ? { rating_as_worker: workerAvg, total_ratings_worker: workerRatings.length } : {}),
+          ...(posterAvg !== null ? { rating_as_poster: posterAvg, total_ratings_poster: posterRatings.length } : {}),
+        }).eq('id', rateeIdForUpdate);
+      }
+    }
+
+    // Reload jobs/apps so UI refreshes
+    load();
   };
 
   const sortedApplicants = [...applicants].sort((a, b) => {
