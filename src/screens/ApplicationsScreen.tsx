@@ -76,6 +76,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
   // FIX: withdraw confirmation modal
   const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
+  const [showRatePrompt, setShowRatePrompt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!currentUser) { setLoading(false); return; }
@@ -150,17 +151,35 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
   const handleMarkComplete = async (jobId: string) => {
     setActionLoading(jobId);
-    // FIX: use RPC for server-side completion with notification trigger
-    const { error } = await supabase.rpc('poster_mark_complete', {
+
+    // Pokušaj RPC (šalje i notifikacije), fallback na direktan update
+    let hasError = false;
+    const { error: rpcError } = await supabase.rpc('poster_mark_complete', {
       p_job_id: jobId,
       p_poster_id: currentUser?.id,
     });
+
+    if (rpcError) {
+      // RPC ne postoji još — direktan update
+      const { error: directError } = await supabase
+        .from('jobs')
+        .update({ status: 'completed' })
+        .eq('id', jobId);
+      if (directError) { hasError = true; onMessage(directError.message, 'error'); }
+    }
+
     setActionLoading(null);
-    if (error) { onMessage(error.message, 'error'); return; }
-    onMessage('Job marked as completed! You can now rate workers.', 'success');
+    if (hasError) return;
+
     setCompleteTarget(null);
+    onMessage('Posao označen kao završen! Možeš da oceniš radnike.', 'success');
+
     await refreshPanel(jobId);
     load();
+
+    // Odmah otvori ocenjivanje prvog prihvaćenog radnika ako ih ima
+    // (korisnik vidi rating flow odmah nakon complete)
+    setShowRatePrompt(jobId);
   };
 
   const openEdit = (job: Job) => { setEditJob(job); setEditDesc(job.description ?? ''); };
@@ -712,20 +731,56 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       </Modal>
 
       {/* ── Mark complete confirm ────────────────────────── */}
-      <Modal open={!!completeTarget} onClose={() => setCompleteTarget(null)} title="Mark job as complete?" center>
-        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65, marginBottom: 4 }}>
-          This will close the job. Accepted workers will be able to rate you, and you'll be able to rate them.
-        </p>
-        <p style={{ fontSize: '.875rem', color: 'var(--tx-3)', marginBottom: 20 }}>This action cannot be undone.</p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-s btn-fw" onClick={() => setCompleteTarget(null)}>Cancel</button>
+      <Modal open={!!completeTarget} onClose={() => setCompleteTarget(null)} title="Završi posao?" center>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 12, padding: '14px', background: 'rgba(34,197,94,.07)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', marginBottom: 14 }}>
+            <span style={{ fontSize: '1.5rem' }}>🏁</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4, color: 'var(--ok)' }}>Posao će biti zatvoren</div>
+              <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.6 }}>
+                Prihvaćeni radnici će moći da te oceni, a ti ćeš moći da oceniš njih. Radnici će dobiti obaveštenje.
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: '.8125rem', color: 'var(--tx-3)', margin: 0 }}>Ova akcija se ne može poništiti.</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             className="btn btn-ok btn-fw btn-lg"
             onClick={() => completeTarget && handleMarkComplete(completeTarget)}
             disabled={actionLoading === completeTarget}
           >
-            {actionLoading === completeTarget ? 'Completing...' : '✓ Mark as completed'}
+            {actionLoading === completeTarget ? '⏳ Završavam...' : '🏁 Potvrdi završetak posla'}
           </button>
+          <button className="btn btn-s btn-fw" onClick={() => setCompleteTarget(null)}>Otkaži</button>
+        </div>
+      </Modal>
+
+      {/* ── Post-complete: rate prompt ───────────────────── */}
+      <Modal open={!!showRatePrompt} onClose={() => setShowRatePrompt(null)} title="Oceni radnike" center>
+        <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>⭐</div>
+          <div style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: 8 }}>Posao je završen!</div>
+          <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.6, marginBottom: 20 }}>
+            Radnici su dobili obaveštenje. Sada možeš da oceniš svakog radnika — ocene su javne i pomažu zajednici.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {applicants
+              .filter(a => a.status === 'accepted' && !ratedIds.has(a.id))
+              .map(app => (
+                <button
+                  key={app.id}
+                  className="btn btn-p btn-fw"
+                  onClick={() => { setShowRatePrompt(null); openRate(app, 'worker'); }}
+                >
+                  ⭐ Oceni {app.worker?.full_name ?? 'radnika'}
+                </button>
+              ))
+            }
+            <button className="btn btn-s btn-fw" onClick={() => setShowRatePrompt(null)}>
+              Oceniću kasnije
+            </button>
+          </div>
         </div>
       </Modal>
 
