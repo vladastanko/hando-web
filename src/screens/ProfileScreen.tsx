@@ -45,15 +45,17 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
   const loadRatings = useCallback(async () => {
     setLoadingRatings(true);
-    const [recv, given] = await Promise.all([
+    const [recv, given, freshProfile] = await Promise.all([
       ratingsApi.getForUser(currentUser.id),
-      // Ratings the user has given — query by rater_id
       ratingsApi.getByRater?.(currentUser.id) ?? { data: [], error: null },
+      // Uvek osvježi profil kad otvorimo Ratings tab, da total_ratings bude tačan
+      profiles.get(currentUser.id),
     ]);
     if (!recv.error) setRatingsReceived(recv.data ?? []);
     if (!given.error) setRatingsGiven(given.data ?? []);
+    if (!freshProfile.error && freshProfile.data) onProfileUpdated(freshProfile.data);
     setLoadingRatings(false);
-  }, [currentUser.id]);
+  }, [currentUser.id, onProfileUpdated]);
 
   useEffect(() => {
     if (tab === 'ratings') loadRatings();

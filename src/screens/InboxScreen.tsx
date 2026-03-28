@@ -86,13 +86,18 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
       const unread = msgs.filter(m => m.sender_id !== currentUser.id && m.is_read === false).length;
       const jobTitle = Array.isArray(c.job) ? c.job[0]?.title : c.job?.title;
 
+      // FIX: ako join ne vrati profil (RLS), sačuvaj prethodno poznato ime
+      const prevConv = activeConvRef.current?.id === c.id ? activeConvRef.current : null;
+      const resolvedName = other?.full_name || prevConv?.other_user_name || '—';
+      const resolvedAvatar = other?.avatar_url ?? prevConv?.other_user_avatar ?? null;
+
       return {
         id: c.id,
         job_id: c.job_id,
         job_title: jobTitle ?? 'Job',
         other_user_id:     other?.id ?? '',
-        other_user_name:   other?.full_name ?? 'User',
-        other_user_avatar: other?.avatar_url ?? null,
+        other_user_name:   resolvedName,
+        other_user_avatar: resolvedAvatar,
         last_message:    last?.content,
         last_message_at: last?.created_at,
         unread_count: unread,
@@ -114,18 +119,17 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // FIX: kad korisnik otvori Inbox tab, odmah markuj sve kao read i resetuj badge
+  // FIX: kad korisnik otvori Inbox tab, markuj SVE neprocitane poruke kao procitane
+  // i resetuj badge. Koristimo ref da ne čekamo na conversations state loop.
   useEffect(() => {
-    if (!isActive || conversations.length === 0) return;
+    if (!isActive) return;
 
-    // Nađi sve conversation_id-eve gdje ima unread
     const convIdsWithUnread = conversations
       .filter(c => c.unread_count > 0)
       .map(c => c.id);
 
     if (convIdsWithUnread.length === 0) return;
 
-    // Markuj svaku konverzaciju posebno (RLS zahteva filter po conversation_id)
     Promise.all(
       convIdsWithUnread.map(convId =>
         supabase
@@ -142,7 +146,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
         return updated;
       });
     });
-  }, [isActive, conversations.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // FIX: listen to both INSERT and UPDATE on messages for badge accuracy
   useEffect(() => {
