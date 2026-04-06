@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/StatusBadge';
 import { Avatar } from '../ui/Avatar';
 import { Stars } from '../ui/Stars';
-import { applications } from '../../lib/supabase';
+import { applications, supabase } from '../../lib/supabase';
 import { formatDatetime } from '../../utils/format';
 
 interface Props {
@@ -19,6 +19,22 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
   const [applyMsg, setApplyMsg] = useState('');
   const [applying, setApplying] = useState(false);
   const [step, setStep] = useState<'view' | 'apply'>('view');
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [checkingApplied, setCheckingApplied] = useState(false);
+
+  // Check if user already has an active application for this job
+  const checkAlreadyApplied = async (jobId: string, userId: string) => {
+    setCheckingApplied(true);
+    const { data } = await supabase
+      .from('applications')
+      .select('id, status')
+      .eq('job_id', jobId)
+      .eq('worker_id', userId)
+      .in('status', ['pending', 'accepted'])
+      .maybeSingle();
+    setAlreadyApplied(!!data);
+    setCheckingApplied(false);
+  };
 
   if (!job) return null;
 
@@ -91,7 +107,7 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
 
           {canApply && (
             <div className="sh-foot" style={{ borderTop: 0, padding: 0 }}>
-              <button className="btn btn-p btn-fw btn-lg" onClick={() => setStep('apply')}>
+              <button className="btn btn-p btn-fw btn-lg" onClick={() => { setStep('apply'); if (currentUser?.id) checkAlreadyApplied(job.id, currentUser.id); }}>
                 Apply — costs 3 credits
               </button>
             </div>
@@ -131,14 +147,23 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
             <span>Applying costs <strong>3 credits</strong>. You currently have <strong>{currentUser?.credits ?? 0}</strong> credits.</span>
           </div>
 
-          <button
-            className="btn btn-p btn-fw btn-lg"
-            onClick={handleApply}
-            disabled={applying || (currentUser?.credits ?? 0) < 3}
-          >
-            {applying ? 'Sending...' : 'Send Application'}
-          </button>
-          <button className="btn btn-s btn-fw" onClick={() => setStep('view')} style={{ marginTop: 8 }}>Back</button>
+          {alreadyApplied && (
+            <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,.1)', border: '1.5px solid rgba(245,158,11,.25)', borderRadius: 'var(--r)', fontSize: '.9rem', color: '#b45309', fontWeight: 600, display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+              <span>You already have an active application for this job. You cannot apply again.</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="btn btn-p btn-fw btn-lg"
+              onClick={handleApply}
+              disabled={applying || (currentUser?.credits ?? 0) < 3 || alreadyApplied || checkingApplied}
+            >
+              {checkingApplied ? 'Checking...' : applying ? 'Sending...' : 'Send Application'}
+            </button>
+            <button className="btn btn-s btn-fw" onClick={() => setStep('view')}>Back</button>
+          </div>
         </>
       )}
     </Modal>
