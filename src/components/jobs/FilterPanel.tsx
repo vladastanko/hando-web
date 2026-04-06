@@ -13,7 +13,7 @@ export interface Filters {
 
 const DEFAULT_FILTERS: Filters = {
   categoryId: '',
-  maxDistance: 50,
+  maxDistance: 100,
   verifiedOnly: false,
   hasHistory: false,
   minRating: 0,
@@ -88,7 +88,7 @@ export function FilterPanel({ categories, filters, onChange }: Props) {
 
       {/* Distance */}
       <div className="flt-sect">
-        <div className="flt-lbl">Max distance: {filters.maxDistance} km</div>
+        <div className="flt-lbl">Max distance: {filters.maxDistance >= 100 ? 'Any' : `${filters.maxDistance} km`}</div>
         <input
           type="range" min={1} max={100} step={1}
           value={filters.maxDistance}
