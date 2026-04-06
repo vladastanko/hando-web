@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── localStorage read-tracking (fallback when RLS blocks UPDATE) ──────
 const LS_KEY = (userId: string) => `handoo_read:${userId}`;
