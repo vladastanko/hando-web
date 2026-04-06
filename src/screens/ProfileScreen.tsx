@@ -193,9 +193,18 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     setPhoneLoading(false);
   };
 
-  // Estimated earnings: completed jobs * pay average (we don't have exact data, show from profile if available)
+  // Estimated earnings
   const totalEarnings = (profile as Profile & { total_earnings?: number })?.total_earnings ?? null;
   const displayName = profile?.full_name || currentUser.email?.split('@')[0] || 'User';
+
+  // Use actual loaded ratings as source of truth for counts/averages
+  // (Supabase triggers may lag behind, so computed values are more accurate)
+  const computedRatingWorker = ratingsReceived.length > 0
+    ? ratingsReceived.reduce((sum, r) => sum + r.score, 0) / ratingsReceived.length
+    : (profile?.rating_as_worker ?? 0);
+  const computedRatingCount = ratingsReceived.length > 0
+    ? ratingsReceived.length
+    : (profile?.total_ratings_worker ?? 0);
 
 
   const activeRatings = ratingsTab === 'received' ? ratingsReceived : ratingsGiven;
@@ -228,11 +237,11 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
             {profile?.city && <div className="prof-c">📍 {profile.city}</div>}
 
             {/* Inline rating summary */}
-            {(profile?.rating_as_worker ?? 0) > 0 && (
+            {computedRatingWorker > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                <Stars value={profile!.rating_as_worker} />
-                <span style={{ fontWeight: 700, fontSize: '.9375rem' }}>{profile!.rating_as_worker.toFixed(1)}</span>
-                <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>({profile!.total_ratings_worker} ratings)</span>
+                <Stars value={computedRatingWorker} />
+                <span style={{ fontWeight: 700, fontSize: '.9375rem' }}>{computedRatingWorker.toFixed(1)}</span>
+                <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>({computedRatingCount} rating{computedRatingCount !== 1 ? 's' : ''})</span>
               </div>
             )}
 
@@ -252,7 +261,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           </div>
           <div className="pstat">
             <div className="pstat-v">
-              {profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—'}
+              {computedRatingWorker > 0 ? computedRatingWorker.toFixed(1) : '—'}
             </div>
             <div className="pstat-l">Worker rating</div>
           </div>
@@ -275,7 +284,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           <button key={t} className={`tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
             {t === 'overview' ? 'Overview'
               : t === 'edit' ? 'Edit Profile'
-              : t === 'ratings' ? `Ratings (${ratingsReceived.length + ratingsGiven.length})`
+              : t === 'ratings' ? `Ratings (${ratingsReceived.length})`
               : 'Verification'}
           </button>
         ))}

@@ -26,7 +26,7 @@ export default function HomeScreen({
 }: Props) {
   const [view,        setView]        = useState<View>('split');
   const [search,      setSearch]      = useState('');
-  const [activeCat,   setActiveCat]   = useState('');
+  // Category is tracked only in filters — pills and dropdown are in sync
   const [filters,     setFilters]     = useState<Filters>(DEFAULT_FILTERS);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -50,14 +50,13 @@ export default function HomeScreen({
       );
     }
 
-    if (activeCat) list = list.filter(j => j.category_id === activeCat);
     if (filters.categoryId) list = list.filter(j => j.category_id === filters.categoryId);
     if (filters.verifiedOnly) list = list.filter(j => j.poster?.verification_status === 'verified');
     if (filters.hasHistory)   list = list.filter(j => (j.poster?.completed_jobs_poster ?? 0) > 0);
     if (filters.minRating > 0) list = list.filter(j => (j.poster?.rating_as_poster ?? 0) >= filters.minRating);
     if (filters.minPay > 0)    list = list.filter(j => j.pay_per_worker >= filters.minPay);
     if (filters.maxPay < 50000) list = list.filter(j => j.pay_per_worker <= filters.maxPay);
-    if (filters.maxDistance < 100 && userLocation) {
+    if (filters.maxDistance < 100 && userLocation) {  // 100 = 'any distance'
       list = list.filter(j => (j.distance_km ?? 999) <= filters.maxDistance);
     }
 
@@ -68,7 +67,7 @@ export default function HomeScreen({
     }
 
     return list;
-  }, [jobs, search, activeCat, filters, userLocation]);
+  }, [jobs, search, filters, userLocation]);
 
   const activeFiltersCount = useMemo(() => {
     let n = 0;
@@ -147,8 +146,8 @@ export default function HomeScreen({
           {allCats.map(cat => (
             <button
               key={cat.id}
-              className={`cpill${activeCat === cat.id ? ' on' : ''}`}
-              onClick={() => setActiveCat(activeCat === cat.id ? '' : cat.id)}
+              className={`cpill${filters.categoryId === cat.id ? ' on' : ''}`}
+              onClick={() => setFilters(f => ({ ...f, categoryId: f.categoryId === cat.id ? '' : cat.id }))}
             >
               <span>{cat.icon}</span>
               <span>{cat.name}</span>

@@ -198,7 +198,7 @@ export default function App() {
             <>
               {/* Compact stats strip */}
               <div className="pg" style={{ paddingBottom: 0 }}>
-                <div className="stats-row" style={{ flexWrap: "wrap" }}>
+                <div className="stats-row">
                   {(
                     [
                       { icon: '💼', value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
