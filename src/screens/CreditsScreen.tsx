@@ -104,12 +104,12 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
 
       {/* Balance card */}
       <div className="cbal-card" style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: '.8125rem', fontWeight: 600, color: 'var(--tx-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>Your balance</div>
+        <div style={{ fontSize: '.8125rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>Your balance</div>
         <div className="cbal-amt">{balance.toLocaleString()}</div>
         <div className="cbal-lb">credits available</div>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>📌 Post a job <strong>10 credits</strong></div>
-          <div style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>📋 Apply for a job <strong>3 credits</strong></div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)' }}>📌 Post a job <strong>10 credits</strong></div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)' }}>📋 Apply for a job <strong>3 credits</strong></div>
         </div>
       </div>
 

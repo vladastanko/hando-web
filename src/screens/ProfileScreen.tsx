@@ -61,6 +61,11 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     if (tab === 'ratings') loadRatings();
   }, [tab, loadRatings]);
 
+  // Pre-load ratings so the tab count is correct before clicking the tab
+  useEffect(() => {
+    loadRatings();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSave = async () => {
     setSaving(true);
     const res = await profiles.update(currentUser.id, {
@@ -270,7 +275,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           <button key={t} className={`tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
             {t === 'overview' ? 'Overview'
               : t === 'edit' ? 'Edit Profile'
-              : t === 'ratings' ? `Ratings (${(profile?.total_ratings_worker ?? 0) + (profile?.total_ratings_poster ?? 0)})`
+              : t === 'ratings' ? `Ratings (${ratingsReceived.length + ratingsGiven.length})`
               : 'Verification'}
           </button>
         ))}

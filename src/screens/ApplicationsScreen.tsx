@@ -758,15 +758,15 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)}>← Go back</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button
-            className="btn btn-d btn-fw"
+            className="btn btn-d btn-fw btn-lg"
             onClick={handleWithdrawConfirm}
             disabled={actionLoading === withdrawTarget}
           >
             {actionLoading === withdrawTarget ? 'Withdrawing...' : 'Confirm withdraw'}
           </button>
+          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)}>← Go back</button>
         </div>
       </Modal>
 

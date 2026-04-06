@@ -1,4 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+
+// ── localStorage read-tracking (fallback when RLS blocks UPDATE) ──────
+const LS_KEY = (userId: string) => `handoo_read:${userId}`;
+
+function getReadTimestamps(userId: string): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_KEY(userId)) ?? '{}'); }
+  catch { return {}; }
+}
+
+function markConvReadLocal(userId: string, convId: string, timestamp: string) {
+  const map = getReadTimestamps(userId);
+  map[convId] = timestamp;
+  localStorage.setItem(LS_KEY(userId), JSON.stringify(map));
+}
+
+function isMessageUnread(msg: DbMessage, currentUserId: string, readMap: Record<string, string>): boolean {
+  if (msg.sender_id === currentUserId) return false;
+  const readUntil = readMap[msg.conversation_id];
+  if (!readUntil) return msg.is_read === false;
+  // If we have a local readUntil, message is read if it was created before or at that time
+  return new Date(msg.created_at) > new Date(readUntil);
+}
+
+
 import type { Profile } from '../types';
 import { supabase } from '../lib/supabase';
 import { Avatar } from '../components/ui/Avatar';
@@ -83,7 +107,8 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       const last   = msgs[0];
-      const unread = msgs.filter(m => m.sender_id !== currentUser.id && m.is_read === false).length;
+      const readMap = getReadTimestamps(currentUser.id);
+      const unread = msgs.filter(m => isMessageUnread(m, currentUser.id, readMap)).length;
       const jobTitle = Array.isArray(c.job) ? c.job[0]?.title : c.job?.title;
 
       // FIX: ako join ne vrati profil (RLS), sačuvaj prethodno poznato ime
@@ -119,34 +144,8 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // FIX: kad korisnik otvori Inbox tab, markuj SVE neprocitane poruke kao procitane
-  // i resetuj badge. Koristimo ref da ne čekamo na conversations state loop.
-  useEffect(() => {
-    if (!isActive) return;
-
-    const convIdsWithUnread = conversations
-      .filter(c => c.unread_count > 0)
-      .map(c => c.id);
-
-    if (convIdsWithUnread.length === 0) return;
-
-    Promise.all(
-      convIdsWithUnread.map(convId =>
-        supabase
-          .from('messages')
-          .update({ is_read: true })
-          .eq('conversation_id', convId)
-          .neq('sender_id', currentUser.id)
-          .eq('is_read', false)
-      )
-    ).then(() => {
-      setConversations(prev => {
-        const updated = prev.map(c => ({ ...c, unread_count: 0 }));
-        onUnreadChange?.(0);
-        return updated;
-      });
-    });
-  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: poruke se markiraju kao pročitane SAMO kad korisnik otvori konkretnu
+  // konverzaciju (u loadMessages). Ne markirati automatski sve kad se otvori tab.
 
   // FIX: listen to both INSERT and UPDATE on messages for badge accuracy
   useEffect(() => {
@@ -172,26 +171,32 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
     setMessages((data as DbMessage[]) ?? []);
 
-    // Mark all received messages as read immediately
-    const { data: updatedRows } = await supabase
+    // Mark all received messages as read:
+    // 1. Save read timestamp to localStorage (works regardless of RLS)
+    const latestMsg = [...(data as DbMessage[])].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    if (latestMsg) {
+      markConvReadLocal(currentUser.id, convId, latestMsg.created_at);
+    }
+
+    // 2. Also try Supabase UPDATE (may fail silently if RLS blocks it)
+    await supabase
       .from('messages')
       .update({ is_read: true })
       .eq('conversation_id', convId)
       .neq('sender_id', currentUser.id)
-      .eq('is_read', false)
-      .select('id');
+      .eq('is_read', false);
 
-    if (updatedRows && updatedRows.length > 0) {
-      // FIX: immediately zero out unread for this conv in local state
-      setConversations(prev => {
-        const updated = prev.map(c =>
-          c.id === convId ? { ...c, unread_count: 0 } : c
-        );
-        const total = updated.reduce((s, c) => s + c.unread_count, 0);
-        onUnreadChange?.(total);
-        return updated;
-      });
-    }
+    // 3. Always zero out unread for this conv in local state
+    setConversations(prev => {
+      const updated = prev.map(c =>
+        c.id === convId ? { ...c, unread_count: 0 } : c
+      );
+      const total = updated.reduce((s, c) => s + c.unread_count, 0);
+      onUnreadChange?.(total);
+      return updated;
+    });
   }, [currentUser.id, onUnreadChange]);
 
   // Subscribe to messages in active conv
