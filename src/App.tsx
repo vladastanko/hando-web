@@ -108,7 +108,9 @@ export default function App() {
   const navTo = useCallback((tab: TabKey) => {
     setActiveTab(tab);
     setView(tab);
-  }, []);
+    // Refresh profile stats whenever user navigates (keeps metrics fresh)
+    if (user) loadProfile(user.id);
+  }, [user, loadProfile]);
 
   const handleModeChange = useCallback((mode: AppMode) => {
     setAppMode(mode);
@@ -122,8 +124,11 @@ export default function App() {
 
   // ─── Job callbacks ────────────────────────────────────────────────────
   const handleJobApplied = useCallback(() => {
-    if (user) loadCredits(user.id);
-  }, [user, loadCredits]);
+    if (user) {
+      loadCredits(user.id);
+      loadProfile(user.id); // Refresh profile stats after applying
+    }
+  }, [user, loadCredits, loadProfile]);
 
   const handleJobCreated = useCallback(async () => {
     if (!user) return;

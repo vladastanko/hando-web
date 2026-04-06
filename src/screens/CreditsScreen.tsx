@@ -84,7 +84,8 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
     setSubmitting(false);
 
     if (error) {
-      onMessage('Could not submit order. Please try again.', 'error');
+      onMessage(`Could not submit order: ${error.message}`, 'error');
+      console.error('credit_orders insert error:', error);
       return;
     }
 
