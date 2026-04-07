@@ -4,6 +4,7 @@ import { JobCard } from '../components/jobs/JobCard';
 import { JobDetailModal } from '../components/jobs/JobDetailModal';
 import { FilterPanel, type Filters, DEFAULT_FILTERS } from '../components/jobs/FilterPanel';
 import { JobMap } from '../components/map/JobMap';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
 
 interface Props {
   jobs: Job[];
@@ -201,7 +202,9 @@ export default function HomeScreen({
         {/* ── List view ───────────────────────────────────── */}
         {view === 'list' && (
           loading ? (
-            <div className="loading"><span className="spin" />Loading jobs...</div>
+            <div className="jgrid">
+              {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
+            </div>
           ) : filtered.length === 0 ? (
             <div className="empty">
               <span className="empty-ic">🔍</span>
@@ -214,8 +217,13 @@ export default function HomeScreen({
             </div>
           ) : (
             <div className="jgrid">
-              {filtered.map(job => (
-                <JobCard key={job.id} job={job} onClick={setSelectedJob} />
+              {filtered.map((job, index) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onClick={setSelectedJob}
+                  animationDelay={Math.min(index, 7) * 60}
+                />
               ))}
             </div>
           )
@@ -242,7 +250,9 @@ export default function HomeScreen({
             {/* List — right scrollable */}
             <div style={{ flex: 1, minWidth: 0, maxHeight: 520, overflowY: 'auto' }}>
               {loading ? (
-                <div className="loading"><span className="spin" />Loading jobs...</div>
+                <div className="jgrid" style={{ gridTemplateColumns: '1fr' }}>
+                  {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="empty">
                   <span className="empty-ic">🔍</span>
@@ -253,11 +263,12 @@ export default function HomeScreen({
                 </div>
               ) : (
                 <div className="jgrid" style={{ gridTemplateColumns: '1fr' }}>
-                  {filtered.map(job => (
+                  {filtered.map((job, index) => (
                     <JobCard
                       key={job.id}
                       job={job}
                       onClick={j => setSelectedJob(j)}
+                      animationDelay={Math.min(index, 7) * 60}
                     />
                   ))}
                 </div>

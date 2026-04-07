@@ -7,13 +7,18 @@ import { formatDate } from '../../utils/format';
 interface Props {
   job: Job;
   onClick: (job: Job) => void;
+  animationDelay?: number;
 }
 
-export function JobCard({ job, onClick }: Props) {
+export function JobCard({ job, onClick, animationDelay }: Props) {
   const spots = Math.max((job.crew_size || 1) - (job.accepted_workers || 0), 0);
 
   return (
-    <article className="jcard" onClick={() => onClick(job)}>
+    <article
+      className="jcard jcard-enter"
+      style={animationDelay !== undefined ? { animationDelay: `${animationDelay}ms` } : undefined}
+      onClick={() => onClick(job)}
+    >
       <div className="jcard-hdr">
         <div className="jcard-bdgs">
           <StatusBadge status={job.status} />
