@@ -53,6 +53,7 @@
   --text-xl:   1.5rem;
   --text-2xl:  1.875rem;
   --text-3xl:  2.375rem;
+  --text-4xl:  3.5rem;
 
   --lh-tight:   1.15;
   --lh-snug:    1.25;
@@ -513,7 +514,7 @@ img,svg{display:block}ul,ol{list-style:none}
 .cbal-card{background:var(--brand-grad);border-radius:var(--r-xl);padding:32px;text-align:center;position:relative;overflow:hidden;box-shadow:0 12px 48px rgba(124,58,255,.35)}
 .cbal-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(255,255,255,.15),transparent 60%)}
 .cbal-card::after{content:'🪙';position:absolute;font-size:110px;opacity:.08;top:-15px;right:-15px;pointer-events:none}
-.cbal-amt{font-size:var(--text-3xl);font-weight:900;letter-spacing:-.05em;color:#fff;position:relative;font-family:'Nunito',sans-serif}
+.cbal-amt{font-size:var(--text-4xl);font-weight:900;letter-spacing:-.05em;color:#fff;position:relative;font-family:'Nunito',sans-serif}
 .cbal-lb{font-size:.875rem;color:rgba(255,255,255,.8);margin-top:6px;position:relative;font-weight:700}
 .pkg-card{background:var(--bg-el);border:1.5px solid var(--border);border-radius:var(--r-lg);padding:22px;cursor:pointer;transition:all var(--t);display:flex;flex-direction:column;gap:11px;position:relative;overflow:hidden;box-shadow:var(--sh-card)}
 .pkg-card:hover{border-color:rgba(124,58,255,.35);box-shadow:0 8px 40px rgba(124,58,255,.15);transform:translateY(-3px)}
