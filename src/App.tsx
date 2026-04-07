@@ -169,9 +169,9 @@ export default function App() {
 
       <main className="app-body">
 
-        {/* ── Credits (full-page overlay) ─────────────────── */}
+        {/* ── Credits ─────────────────────────────────────── */}
         {view === 'credits' && (
-          <>
+          <div className="view-enter" key="credits">
             <div className="pg" style={{ paddingBottom: 0 }}>
               <button className="btn btn-g btn-sm" onClick={() => setView(activeTab)}>
                 ← Back
@@ -184,72 +184,74 @@ export default function App() {
               onPurchased={() => loadCredits(user.id)}
               onMessage={(m, t) => toast(m, t ?? 'info')}
             />
-          </>
+          </div>
         )}
 
-        {/* ── Home: Discover (find) or Post Job (post) ────── */}
+        {/* ── Home ─────────────────────────────────────────── */}
         {view === 'home' && (
-          isPostMode ? (
-            <PostJobScreen
-              categories={categories}
-              creditBalance={creditBalance}
-              userLocation={userLocation}
-              onRequestLocation={requestLocation}
-              onCreated={handleJobCreated}
-              onGoToCredits={() => setView('credits')}
-              onMessage={(m, t) => toast(m, t ?? 'info')}
-            />
-          ) : (
-            <>
-              {/* Compact stats strip */}
-              <div className="pg" style={{ paddingBottom: 0 }}>
-                <div className="stats-row">
-                  {(
-                    [
-                      { icon: '💼', value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
-                      { icon: '⭐', value: profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—', label: 'My rating' },
-                      { icon: '🪙', value: creditBalance, label: 'Credits' },
-                      { icon: '📌', value: jobsList.length, label: 'Open nearby' },
-                    ] as Array<{ icon: string; value: string | number; label: string }>
-                  ).map(s => (
-                    <div key={s.label} className="stat-ch">
-                      <span className="stat-ic">{s.icon}</span>
-                      <div>
-                        <div className="stat-v">{s.value}</div>
-                        <div className="stat-lb">{s.label}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <HomeScreen
-                jobs={jobsList}
+          <div className="view-enter" key="home">
+            {isPostMode ? (
+              <PostJobScreen
                 categories={categories}
-                loading={jobsLoading}
+                creditBalance={creditBalance}
                 userLocation={userLocation}
-                locationLoading={locLoading}
-                currentUser={profile}
-                onRefresh={loadJobs}
                 onRequestLocation={requestLocation}
-                onJobApplied={handleJobApplied}
+                onCreated={handleJobCreated}
+                onGoToCredits={() => setView('credits')}
                 onMessage={(m, t) => toast(m, t ?? 'info')}
               />
-            </>
-          )
+            ) : (
+              <>
+                <div className="pg" style={{ paddingBottom: 0 }}>
+                  <div className="stats-row">
+                    {(
+                      [
+                        { icon: '💼', value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
+                        { icon: '⭐', value: profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—', label: 'My rating' },
+                        { icon: '🪙', value: creditBalance, label: 'Credits' },
+                        { icon: '📌', value: jobsList.length, label: 'Open nearby' },
+                      ] as Array<{ icon: string; value: string | number; label: string }>
+                    ).map(s => (
+                      <div key={s.label} className="stat-ch">
+                        <span className="stat-ic">{s.icon}</span>
+                        <div>
+                          <div className="stat-v">{s.value}</div>
+                          <div className="stat-lb">{s.label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <HomeScreen
+                  jobs={jobsList}
+                  categories={categories}
+                  loading={jobsLoading}
+                  userLocation={userLocation}
+                  locationLoading={locLoading}
+                  currentUser={profile}
+                  onRefresh={loadJobs}
+                  onRequestLocation={requestLocation}
+                  onJobApplied={handleJobApplied}
+                  onMessage={(m, t) => toast(m, t ?? 'info')}
+                />
+              </>
+            )}
+          </div>
         )}
 
-        {/* ── My Jobs / Applications ───────────────────────── */}
+        {/* ── Applications ─────────────────────────────────── */}
         {view === 'applications' && (
-          <ApplicationsScreen
-            currentUser={profile ?? { id: user.id, email: user.email }}
-            onMessage={(m, t) => toast(m, t ?? 'info')}
-            onCreditChange={() => loadCredits(user.id)}
-            onOpenChat={() => navTo('inbox')}
-          />
+          <div className="view-enter" key="applications">
+            <ApplicationsScreen
+              currentUser={profile ?? { id: user.id, email: user.email }}
+              onMessage={(m, t) => toast(m, t ?? 'info')}
+              onCreditChange={() => loadCredits(user.id)}
+              onOpenChat={() => navTo('inbox')}
+            />
+          </div>
         )}
 
-        {/* ── Inbox — keep mounted for realtime unread counts ── */}
+        {/* ── Inbox — uvek mountovan za realtime unread ─────── */}
         <div style={{ display: view === 'inbox' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <InboxScreen
             currentUser={user}
@@ -262,12 +264,14 @@ export default function App() {
 
         {/* ── Profile ──────────────────────────────────────── */}
         {view === 'profile' && (
-          <ProfileScreen
-            currentUser={user}
-            profile={profile}
-            onProfileUpdated={setProfile}
-            onMessage={(m, t) => toast(m, t ?? 'info')}
-          />
+          <div className="view-enter" key="profile">
+            <ProfileScreen
+              currentUser={user}
+              profile={profile}
+              onProfileUpdated={setProfile}
+              onMessage={(m, t) => toast(m, t ?? 'info')}
+            />
+          </div>
         )}
 
       </main>
