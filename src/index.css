@@ -644,4 +644,12 @@ img,svg{display:block}ul,ol{list-style:none}
 .maplibregl-ctrl-group button:hover{background:var(--bg-ov)!important}
 .maplibregl-ctrl-group button+button{border-top:1.5px solid var(--border)!important}
 .maplibregl-ctrl-attrib{background:rgba(255,255,255,0.9)!important;color:var(--tx-2)!important;font-size:10px!important;border-radius:var(--r-sm)!important}
+
+/* ─── REDUCED MOTION ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jcard-enter,.view-enter{animation:none;opacity:1}
+  .skel{animation:none}
+  .btn-p,.btn-p:hover,.btn-p:active{transform:none;transition:none}
+  .jcard{transition:none}
+}
 .maplibregl-ctrl-attrib a{color:var(--tx-2)!important}

@@ -1,6 +1,6 @@
 export function SkeletonCard() {
   return (
-    <article className="jcard" aria-hidden="true" aria-label="Loading">
+    <article className="jcard" aria-hidden="true">
       <div className="jcard-hdr">
         <div className="jcard-bdgs" style={{ gap: 6 }}>
           <div className="skel" style={{ width: 52, height: 20 }} />
