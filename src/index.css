@@ -226,9 +226,9 @@ img,svg{display:block}ul,ol{list-style:none}
   font-family:'Nunito',sans-serif;
 }
 .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
-.btn-p{background:var(--brand-grad);color:#fff;box-shadow:0 4px 20px rgba(124,58,255,.3)}
-.btn-p:hover{box-shadow:0 6px 28px rgba(124,58,255,.5);transform:translateY(-1px)}
-.btn-p:active{transform:translateY(0)}
+.btn-p{background:var(--brand-grad);color:#fff;box-shadow:0 4px 20px rgba(124,58,255,.3);transition:transform var(--dur-base) var(--ease-spring),box-shadow var(--dur-base) var(--ease-spring)}
+.btn-p:hover{box-shadow:0 8px 28px rgba(124,58,255,.5);transform:translateY(-2px) scale(1.01)}
+.btn-p:active{transform:scale(.95);transition-duration:var(--dur-fast)}
 .btn-s{background:var(--bg-el);border:1.5px solid var(--border);color:var(--tx);box-shadow:var(--sh-card)}
 .btn-s:hover{border-color:var(--brand);background:var(--bg-ov)}
 .btn-g{background:transparent;color:var(--tx-2);padding:0 12px}
@@ -248,15 +248,16 @@ img,svg{display:block}ul,ol{list-style:none}
 .flb{font-size:.8125rem;font-weight:700;color:var(--tx-2);letter-spacing:.01em}
 .inp,.sel,.txta{
   width:100%;height:48px;padding:0 16px;border-radius:var(--r-md);
-  border:1.5px solid var(--border);background:var(--bg-el);
+  border:1.5px solid var(--border);background:var(--bg-ov);
   color:var(--tx);font-size:.9375rem;font-weight:500;
-  transition:border-color var(--tf),box-shadow var(--tf);
+  transition:border-color var(--dur-base),box-shadow var(--dur-base) var(--ease-out),background var(--dur-base);
   box-shadow:var(--sh-card);
 }
 .inp::placeholder,.txta::placeholder{color:var(--tx-3)}
 .inp:focus,.sel:focus,.txta:focus{
   border-color:var(--border-foc);
   box-shadow:0 0 0 4px rgba(124,58,255,.12);
+  background:var(--bg-el);
 }
 .txta{height:auto;min-height:110px;padding:14px 16px;resize:vertical;line-height:1.6}
 .sel{
@@ -296,11 +297,11 @@ img,svg{display:block}ul,ol{list-style:none}
 /* JOB CARD */
 .jcard{
   background:var(--bg-el);border:1.5px solid var(--border);border-radius:var(--r-lg);
-  padding:var(--space-4);cursor:pointer;transition:all var(--t);
+  padding:var(--space-4);cursor:pointer;transition:transform var(--dur-slow) var(--ease-spring),border-color var(--dur-slow),box-shadow var(--dur-slow) var(--ease-spring);
   display:flex;flex-direction:column;gap:var(--space-3);position:relative;overflow:hidden;
   box-shadow:var(--sh-card);
 }
-.jcard:hover{border-color:rgba(124,58,255,.28);box-shadow:0 8px 40px rgba(124,58,255,.13);transform:translateY(-3px)}
+.jcard:hover{border-color:rgba(124,58,255,.28);box-shadow:0 12px 40px rgba(124,58,255,.15);transform:translateY(-4px)}
 .jcard-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .jcard-bdgs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .jcard-title{
@@ -564,6 +565,36 @@ img,svg{display:block}ul,ol{list-style:none}
 .spin{width:18px;height:18px;border:2.5px solid var(--border-hi);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading{display:flex;align-items:center;justify-content:center;padding:56px;gap:11px;color:var(--tx-2);font-size:.875rem}
+
+/* ─── ANIMATION KEYFRAMES ────────────────────────── */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes viewEnter {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+/* ─── ANIMATION UTILITY CLASSES ──────────────────── */
+.view-enter {
+  animation: viewEnter var(--dur-slow) var(--ease-spring);
+}
+.jcard-enter {
+  opacity: 0;
+  animation: cardEnter var(--dur-enter) var(--ease-spring) forwards;
+}
+.skel {
+  background: linear-gradient(90deg, var(--bg-sub) 25%, var(--bg-ov) 50%, var(--bg-sub) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--r-xs);
+  flex-shrink: 0;
+}
 
 .info-box{padding:13px 16px;border-radius:var(--r-lg);font-size:.875rem;display:flex;align-items:flex-start;gap:10px}
 .info-box.warn{background:rgba(245,158,11,.08);border:1.5px solid rgba(245,158,11,.2);color:#b45309}
