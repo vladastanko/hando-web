@@ -303,20 +303,20 @@ img,svg{display:block}ul,ol{list-style:none}
 .jcard-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .jcard-bdgs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .jcard-title{
-  font-size:1rem;font-weight:800;line-height:1.3;letter-spacing:-.015em;
+  font-size:var(--text-md);font-weight:800;line-height:var(--lh-snug);letter-spacing:-.02em;
   font-family:'Nunito',sans-serif;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .jcard-desc{
-  font-size:.8125rem;color:var(--tx-2);line-height:1.6;
+  font-size:var(--text-base);color:var(--tx-2);line-height:var(--lh-relaxed);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .jcard-meta{display:flex;flex-wrap:wrap;gap:10px}
-.jmeta{display:flex;align-items:center;gap:4px;font-size:.8125rem;color:var(--tx-2);font-weight:600}
+.jmeta{display:flex;align-items:center;gap:4px;font-size:var(--text-sm);color:var(--tx-3);font-weight:600}
 .jcard-foot{display:flex;justify-content:space-between;align-items:center;padding-top:13px;border-top:1.5px solid var(--border)}
 .jpay{display:flex;align-items:baseline;gap:4px}
 .jpay-amt{
-  font-size:1.25rem;font-weight:900;letter-spacing:-.02em;
+  font-size:var(--text-lg);font-weight:900;letter-spacing:-.03em;
   font-family:'Nunito',sans-serif;
   background:var(--brand-grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
@@ -392,7 +392,7 @@ img,svg{display:block}ul,ol{list-style:none}
 
 /* SECTION HEADER */
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
-.sec-ttl{font-size:1.0625rem;font-weight:800;letter-spacing:-.015em;font-family:'Nunito',sans-serif}
+.sec-ttl{font-size:var(--text-lg);font-weight:900;letter-spacing:-.025em;font-family:'Nunito',sans-serif}
 
 /* STATS CHIPS */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:2px 1px}
@@ -404,8 +404,8 @@ img,svg{display:block}ul,ol{list-style:none}
 }
 .stat-ch:hover{border-color:rgba(124,58,255,.3);box-shadow:0 4px 20px rgba(124,58,255,.1);transform:translateY(-1px)}
 .stat-ic{font-size:1.375rem}
-.stat-v{font-size:1.25rem;font-weight:900;letter-spacing:-.025em;font-family:'Nunito',sans-serif}
-.stat-lb{font-size:.6875rem;color:var(--tx-2);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:1px;font-family:'Nunito',sans-serif}
+.stat-v{font-size:var(--text-lg);font-weight:900;letter-spacing:-.035em;font-family:'Nunito',sans-serif}
+.stat-lb{font-size:var(--text-xs);color:var(--tx-3);font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-top:1px;font-family:'Nunito',sans-serif}
 
 /* AUTH */
 .auth-pg{
@@ -446,7 +446,7 @@ img,svg{display:block}ul,ol{list-style:none}
 @keyframes shUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 .sh-drag{width:40px;height:4px;border-radius:2px;background:var(--border-hi);margin:12px auto 0}
 .sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1.5px solid var(--border)}
-.sh-ttl{font-size:1.0625rem;font-weight:800;letter-spacing:-.015em;font-family:'Nunito',sans-serif}
+.sh-ttl{font-size:var(--text-md);font-weight:800;letter-spacing:-.02em;font-family:'Nunito',sans-serif}
 .sh-body{padding:18px 22px;display:flex;flex-direction:column;gap:18px}
 .sh-foot{padding:14px 22px;border-top:1.5px solid var(--border);display:flex;flex-direction:column;gap:9px}
 .sh-close{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--r-full);border:0;background:var(--bg-ov);color:var(--tx-2);cursor:pointer;font-size:1rem;transition:all var(--tf)}
@@ -495,12 +495,12 @@ img,svg{display:block}ul,ol{list-style:none}
 /* PROFILE */
 .prof-hdr{display:flex;align-items:center;gap:18px;padding:24px;border-bottom:1.5px solid var(--border)}
 .prof-info{flex:1;min-width:0}
-.prof-n{font-size:1.3125rem;font-weight:900;letter-spacing:-.025em;font-family:'Nunito',sans-serif}
+.prof-n{font-size:var(--text-xl);font-weight:900;letter-spacing:-.025em;font-family:'Nunito',sans-serif}
 .prof-c{font-size:.875rem;color:var(--tx-2);margin-top:3px}
 .prof-bdgs{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
 .prof-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
 .pstat{background:var(--bg-el);padding:18px;text-align:center}
-.pstat-v{font-size:1.5rem;font-weight:900;letter-spacing:-.03em;font-family:'Nunito',sans-serif}
+.pstat-v{font-size:var(--text-xl);font-weight:900;letter-spacing:-.035em;font-family:'Nunito',sans-serif}
 .pstat-l{font-size:.6875rem;color:var(--tx-2);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;font-family:'Nunito',sans-serif}
 .rating-row{display:flex;gap:12px;padding:14px 0;border-bottom:1.5px solid var(--border)}
 .rating-row:last-child{border-bottom:0}
@@ -513,7 +513,7 @@ img,svg{display:block}ul,ol{list-style:none}
 .cbal-card{background:var(--brand-grad);border-radius:var(--r-xl);padding:32px;text-align:center;position:relative;overflow:hidden;box-shadow:0 12px 48px rgba(124,58,255,.35)}
 .cbal-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(255,255,255,.15),transparent 60%)}
 .cbal-card::after{content:'🪙';position:absolute;font-size:110px;opacity:.08;top:-15px;right:-15px;pointer-events:none}
-.cbal-amt{font-size:3.5rem;font-weight:900;letter-spacing:-.05em;color:#fff;position:relative;font-family:'Nunito',sans-serif}
+.cbal-amt{font-size:var(--text-3xl);font-weight:900;letter-spacing:-.05em;color:#fff;position:relative;font-family:'Nunito',sans-serif}
 .cbal-lb{font-size:.875rem;color:rgba(255,255,255,.8);margin-top:6px;position:relative;font-weight:700}
 .pkg-card{background:var(--bg-el);border:1.5px solid var(--border);border-radius:var(--r-lg);padding:22px;cursor:pointer;transition:all var(--t);display:flex;flex-direction:column;gap:11px;position:relative;overflow:hidden;box-shadow:var(--sh-card)}
 .pkg-card:hover{border-color:rgba(124,58,255,.35);box-shadow:0 8px 40px rgba(124,58,255,.15);transform:translateY(-3px)}
