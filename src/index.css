@@ -115,9 +115,10 @@ img,svg{display:block}ul,ol{list-style:none}
 }
 .topbar-in{
   width:100%;max-width:1160px;margin:0 auto;padding:0 var(--pad);
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  min-width:0;overflow:hidden;
+  display:flex;align-items:center;gap:8px;
+  /* NO overflow:hidden — it clips dropdowns and right-side elements */
 }
+/* Brand: never shrinks */
 .tb-brand{display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;text-decoration:none}
 .tb-logo{
   width:36px;height:36px;border-radius:var(--r-sm);
@@ -133,20 +134,27 @@ img,svg{display:block}ul,ol{list-style:none}
   background:var(--brand-grad);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
-.tb-right{display:flex;align-items:center;gap:8px}
+/* Right actions: never shrinks, always visible */
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
 
+/* Mode toggle: sits in the middle, shrinks before brand/right */
 .mode-toggle{
   display:flex;background:var(--bg-ov);border:1.5px solid var(--border);
-  border-radius:var(--r-full);padding:4px;gap:2px;
+  border-radius:var(--r-full);padding:4px;gap:2px;flex-shrink:1;min-width:0;
 }
 .mode-btn{
-  height:34px;padding:0 18px;border-radius:var(--r-full);border:0;
+  height:34px;padding:0 14px;border-radius:var(--r-full);border:0;
   background:transparent;color:var(--tx-2);
   font-size:.8125rem;font-weight:800;cursor:pointer;transition:all var(--t);white-space:nowrap;
   font-family:'Nunito',sans-serif;
 }
 .mode-btn.active{background:var(--brand-grad);color:#fff;box-shadow:0 3px 14px rgba(124,58,255,.35)}
 .mode-btn:not(.active):hover{color:var(--tx)}
+/* Very small screens: hide mode toggle text, show as icon-sized pills */
+@media(max-width:420px){
+  .mode-btn{padding:0 10px;font-size:.75rem}
+  .tb-name{display:none}
+}
 
 .cred-chip{
   display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;
@@ -656,8 +664,6 @@ img,svg{display:block}ul,ol{list-style:none}
   :root{--pad:14px}
 }
 @media(max-width:400px){
-  .tb-name{font-size:1.0625rem}
-  .mode-btn{padding:0 8px;font-size:.6875rem}
   .prof-name{display:none}
   .psect{padding:14px 12px}
   .auth-card{padding:20px}
