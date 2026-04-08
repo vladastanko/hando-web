@@ -117,11 +117,12 @@ img,svg{display:block}ul,ol{list-style:none}
 }
 .topbar-in{
   width:100%;max-width:1160px;margin:0 auto;padding:0 var(--pad);
-  display:flex;align-items:center;gap:8px;
-  /* No overflow:hidden/clip here — would clip absolutely-positioned dropdowns */
+  /* CSS Grid: 3 columns — left brand | center toggle | right actions
+     Outer columns are 1fr each so the middle column is truly centered */
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
 }
-/* Brand: logo always visible, text hidden on small screens */
-.tb-brand{display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;text-decoration:none}
+/* Brand: left column, aligned left */
+.tb-brand{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;justify-self:start}
 .tb-logo{
   width:36px;height:36px;border-radius:var(--r-sm);
   background:var(--brand-grad);
@@ -135,34 +136,32 @@ img,svg{display:block}ul,ol{list-style:none}
   background:var(--brand-grad);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
-/* Right actions: flex-shrink:0 so they're ALWAYS fully visible */
-.tb-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+/* Right actions: right column, aligned right — always fully visible */
+.tb-right{display:flex;align-items:center;gap:6px;justify-self:end}
 
-/* Mode toggle: flex:1 so it fills middle space but shrinks when needed */
+/* Mode toggle: center column, truly centered between brand and actions */
 .mode-toggle{
   display:flex;background:var(--bg-ov);border:1.5px solid var(--border);
   border-radius:var(--r-full);padding:3px;gap:2px;
-  flex:1;max-width:240px;min-width:0;
 }
 .mode-btn{
-  flex:1;height:32px;padding:0 10px;border-radius:var(--r-full);border:0;
+  height:32px;padding:0 14px;border-radius:var(--r-full);border:0;
   background:transparent;color:var(--tx-2);
   font-size:.8125rem;font-weight:800;cursor:pointer;transition:all var(--t);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font-family:'Nunito',sans-serif;
+  white-space:nowrap;font-family:'Nunito',sans-serif;
 }
 .mode-btn.active{background:var(--brand-grad);color:#fff;box-shadow:0 3px 14px rgba(124,58,255,.35)}
 .mode-btn:not(.active):hover{color:var(--tx)}
 
-/* ≤480px: hide brand text to free space for the right action buttons */
-@media(max-width:480px){
+/* ≤520px: hide brand text, compact buttons — toggle stays centered */
+@media(max-width:520px){
   .tb-name{display:none}
-  .mode-toggle{max-width:160px}
-  .mode-btn{font-size:.75rem;padding:0 8px}
+  .mode-btn{padding:0 10px;font-size:.75rem}
   .tb-right{gap:4px}
 }
-/* ≤360px: hide mode toggle entirely — user can find mode switch elsewhere */
-@media(max-width:360px){
+/* ≤340px: hide mode toggle to make room */
+@media(max-width:340px){
+  .topbar-in{grid-template-columns:auto 1fr auto}
   .mode-toggle{display:none}
 }
 
@@ -656,8 +655,9 @@ img,svg{display:block}ul,ol{list-style:none}
 }
 @media(max-width:768px){
   /* Split view: hide map, show list only — user can switch to Map view */
-  .split-view{grid-template-columns:1fr}
-  .split-map{display:none}
+  /* Split view on mobile: stack vertically, map on top */
+  .split-view{grid-template-columns:1fr;grid-template-rows:auto auto}
+  .split-map{order:-1;display:block}
   .split-list{max-height:none;overflow-y:visible}
 }
 @media(max-width:640px){
