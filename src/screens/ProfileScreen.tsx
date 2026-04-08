@@ -144,53 +144,44 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   };
 
   const handlePhoneSend = async () => {
-    if (!phoneNumber.trim()) { onMessage('Please enter your phone number.', 'error'); return; }
+    if (!phoneNumber.trim()) { onMessage(t('enterPhone'), 'error'); return; }
     setPhoneLoading(true);
     try {
-      const { auth: authLib } = await import('../lib/supabase');
-      const res = await authLib.sendPhoneOtp(phoneNumber.trim());
-      if (res.error) {
-        // Twilio not configured — fall back to saving number directly
-        const errMsg = String((res.error as { message?: string })?.message ?? res.error);
-        if (errMsg.includes('Unsupported') || errMsg.includes('phone provider') || errMsg.includes('not enabled')) {
-          // Save directly without OTP
-          const { profiles: pl } = await import('../lib/supabase');
-          const upd = await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
-          if (upd.data) onProfileUpdated(upd.data);
-          setPhoneStep('idle');
-          onMessage('Phone number saved. (OTP requires Twilio — see PROVIDERS.md)', 'success');
-        } else {
-          onMessage('Could not send OTP: ' + errMsg, 'error');
-        }
+      const { supabase: sb } = await import('../lib/supabase');
+      const { error } = await sb.functions.invoke('send-phone-otp', {
+        body: { phone: phoneNumber.trim() },
+      });
+      if (error) {
+        onMessage('Could not send code: ' + (error.message ?? String(error)), 'error');
         setPhoneLoading(false);
         return;
       }
       setPhoneStep('enter_otp');
-      onMessage('OTP sent! Check your SMS.', 'success');
+      onMessage(t('otpSentEmail'), 'success');
     } catch {
-      onMessage('Failed to send OTP.', 'error');
+      onMessage('Failed to send code.', 'error');
     }
     setPhoneLoading(false);
   };
 
   const handlePhoneVerify = async () => {
-    if (!phoneOtp.trim()) { onMessage('Please enter the OTP code.', 'error'); return; }
+    if (!phoneOtp.trim()) { onMessage(t('enterCode'), 'error'); return; }
     setPhoneLoading(true);
     try {
-      const { auth: authLib } = await import('../lib/supabase');
-      const res = await authLib.verifyPhoneOtp(phoneNumber.trim(), phoneOtp.trim());
-      if (res.error) {
-        onMessage('Invalid code: ' + String((res.error as { message?: string })?.message ?? res.error), 'error');
+      const { supabase: sb, profiles: pl } = await import('../lib/supabase');
+      const { error } = await sb.functions.invoke('verify-phone-otp', {
+        body: { code: phoneOtp.trim() },
+      });
+      if (error) {
+        onMessage('Invalid code: ' + (error.message ?? String(error)), 'error');
         setPhoneLoading(false);
         return;
       }
-      const { profiles: pl } = await import('../lib/supabase');
-      await pl.update(currentUser.id, { phone: phoneNumber.trim(), is_phone_verified: true });
       const pr = await pl.get(currentUser.id);
       if (pr.data) onProfileUpdated(pr.data);
       setPhoneStep('idle');
       setPhoneOtp('');
-      onMessage('Phone verified!', 'success');
+      onMessage(t('phoneVerifiedMsg'), 'success');
     } catch {
       onMessage('Verification failed.', 'error');
     }
@@ -468,23 +459,23 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           {/* Status overview */}
           <div className="card">
             <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>Verification Status</div>
+              <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t('verificationStatus')}</div>
 
               {/* Email */}
               <div className="verif-item">
                 <div className="verif-l">
                   <Mail size={20} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Email address</div>
+                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{t('emailAddress')}</div>
                     <div style={{ fontSize: '.75rem', color: profile?.is_email_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                      {profile?.is_email_verified ? `Verified — ${currentUser.email}` : emailSent ? 'Check your inbox for the link' : `Not verified — ${currentUser.email}`}
+                      {profile?.is_email_verified ? `${t('verified')} — ${currentUser.email}` : emailSent ? t('checkInboxLink') : `${t('notVerifiedEmail')} — ${currentUser.email}`}
                     </div>
                   </div>
                 </div>
                 {profile?.is_email_verified
-                  ? <span className="bdg bdg-ok"><Check size={11} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Verified</span>
+                  ? <span className="bdg bdg-ok"><Check size={11} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{t('verified')}</span>
                   : <button className="btn btn-s btn-sm" onClick={handleEmailVerify} disabled={emailSent || emailLoading}>
-                      {emailLoading ? '...' : emailSent ? 'Sent ✓' : 'Send link'}
+                      {emailLoading ? '...' : emailSent ? t('sentCheck') : t('sendLink')}
                     </button>
                 }
               </div>
@@ -495,17 +486,17 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   <div className="verif-l">
                     <Phone size={20} strokeWidth={1.75} />
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Phone number</div>
+                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{t('phoneNumber')}</div>
                       <div style={{ fontSize: '.75rem', color: profile?.is_phone_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                        {profile?.is_phone_verified ? `Saved — ${profile.phone ?? ''}` : 'Not added'}
+                        {profile?.is_phone_verified ? `${t('phoneSaved')} — ${profile.phone ?? ''}` : t('notAdded')}
                       </div>
                     </div>
                   </div>
                   {phoneStep === 'idle'
                     ? <button className="btn btn-s btn-sm" onClick={() => setPhoneStep('enter_phone')}>
-                        {profile?.is_phone_verified ? 'Edit' : 'Add'}
+                        {profile?.is_phone_verified ? t('edit') : t('addLabel')}
                       </button>
-                    : <button className="btn btn-s btn-sm" onClick={() => { setPhoneStep('idle'); setPhoneOtp(''); }}>Cancel</button>
+                    : <button className="btn btn-s btn-sm" onClick={() => { setPhoneStep('idle'); setPhoneOtp(''); }}>{t('cancel')}</button>
                   }
                 </div>
                 {phoneStep === 'enter_phone' && (
@@ -516,22 +507,22 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                       style={{ flex: 1, height: 36, fontSize: '.875rem' }}
                     />
                     <button className="btn btn-p btn-sm" onClick={handlePhoneSend} disabled={phoneLoading}>
-                      {phoneLoading ? '...' : 'Send OTP'}
+                      {phoneLoading ? '...' : t('sendOtpBtn')}
                     </button>
                   </div>
                 )}
                 {phoneStep === 'enter_otp' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 40 }}>
-                    <div style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>SMS sent to {phoneNumber}</div>
+                    <div style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>{t('codeSentToEmail')}</div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
-                        className="inp" placeholder="Enter 6-digit code" value={phoneOtp}
+                        className="inp" placeholder={t('enterCode')} value={phoneOtp}
                         onChange={e => setPhoneOtp(e.target.value)}
                         style={{ flex: 1, height: 36, fontSize: '.875rem', letterSpacing: '0.1em' }}
                         maxLength={6}
                       />
                       <button className="btn btn-p btn-sm" onClick={handlePhoneVerify} disabled={phoneLoading}>
-                        {phoneLoading ? '...' : 'Verify'}
+                        {phoneLoading ? '...' : t('verifyBtn')}
                       </button>
                     </div>
                   </div>
@@ -543,16 +534,17 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                 <div className="verif-l">
                   <CreditCard size={20} strokeWidth={1.75} />
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Identity (ID card)</div>
-                    <div style={{ fontSize: '.75rem', color: profile?.verification_status === 'verified' ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                      {profile?.verification_status === 'verified' ? 'Verified'
-                        : profile?.verification_status === 'pending' ? 'Under review (up to 48h)'
-                        : 'Not submitted'}
+                    <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{t('identityCard')}</div>
+                    <div style={{ fontSize: '.75rem', color: profile?.verification_status === 'verified' ? 'var(--ok)' : profile?.verification_status === 'rejected' ? 'var(--err)' : 'var(--tx-2)', marginTop: 2 }}>
+                      {profile?.verification_status === 'verified' ? t('verified')
+                        : profile?.verification_status === 'pending' ? t('idUnderReview')
+                        : profile?.verification_status === 'rejected' ? t('idRejected')
+                        : t('idNotSubmitted')}
                     </div>
                   </div>
                 </div>
-                <span className={`bdg ${profile?.verification_status === 'verified' ? 'bdg-ok' : 'bdg-neu'}`}>
-                  {profile?.verification_status === 'verified' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} strokeWidth={2} />Verified</span> : '–'}
+                <span className={`bdg ${profile?.verification_status === 'verified' ? 'bdg-ok' : profile?.verification_status === 'rejected' ? 'bdg-rej' : 'bdg-neu'}`}>
+                  {profile?.verification_status === 'verified' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} strokeWidth={2} />{t('verified')}</span> : '–'}
                 </span>
               </div>
             </div>
@@ -561,30 +553,43 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
           {/* ID upload */}
           <div className="card">
             <div style={{ padding: '18px 20px' }}>
-              <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 6 }}>Identity Verification</div>
+              <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 6 }}>{t('idVerifTitle')}</div>
               <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65, marginBottom: 16 }}>
-                Upload both sides of your personal ID card. Your documents are stored securely and reviewed manually by the Handoo team. This process takes <strong style={{ color: 'var(--tx)' }}>up to 48 hours</strong>.
+                {t('idVerifDesc')}
               </div>
+
+              {profile?.verification_status === 'rejected' && (
+                <div className="info-box err" style={{ marginBottom: 16 }}>
+                  <AlertTriangle size={16} strokeWidth={1.75} />
+                  <div>
+                    <strong>{t('verificationRejected')}.</strong>
+                    {(profile as Profile & { verification_rejection_reason?: string })?.verification_rejection_reason && (
+                      <div style={{ marginTop: 4 }}>{t('rejectionReason')} {(profile as Profile & { verification_rejection_reason?: string }).verification_rejection_reason}</div>
+                    )}
+                    <div style={{ marginTop: 4 }}>{t('pleaseReupload')}</div>
+                  </div>
+                </div>
+              )}
 
               {profile?.verification_status === 'pending' && (
                 <div className="info-box warn" style={{ marginBottom: 16 }}>
                   <Hourglass size={16} strokeWidth={1.75} />
-                  <span>Your documents are currently under review. You'll be notified by email once verification is complete (up to 48h).</span>
+                  <span>{t('docsUnderReview')}</span>
                 </div>
               )}
 
               {profile?.verification_status === 'verified' && (
                 <div className="info-box ok" style={{ marginBottom: 16 }}>
                   <Check size={16} strokeWidth={1.75} />
-                  <span>Your identity has been verified. Your profile shows the verified badge.</span>
+                  <span>{t('identityVerifiedMsg')}</span>
                 </div>
               )}
 
               {profile?.verification_status !== 'verified' && profile?.verification_status !== 'pending' && (
                 <>
                   {([
-                    ['verif-front', 'ID Card — Front side', idFront, setIdFront],
-                    ['verif-back', 'ID Card — Back side', idBack, setIdBack],
+                    ['verif-front', t('idCardFront'), idFront, setIdFront],
+                    ['verif-back', t('idCardBack'), idBack, setIdBack],
                   ] as [string, string, File | null, (f: File | null) => void][]).map(([id, label, file, setter]) => (
                     <div key={id} className="verif-item" style={{ marginBottom: 10 }}>
                       <div className="verif-l">
@@ -592,12 +597,12 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label}</div>
                           <div style={{ fontSize: '.75rem', color: file ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
-                            {file ? `✓ ${file.name}` : 'No file selected'}
+                            {file ? `✓ ${file.name}` : t('noFileSelected')}
                           </div>
                         </div>
                       </div>
                       <label className="btn btn-s btn-sm" style={{ cursor: 'pointer' }}>
-                        {file ? 'Change' : 'Upload'}
+                        {file ? t('changeFile') : t('uploadFile')}
                         <input
                           type="file" accept="image/*,.pdf" style={{ display: 'none' }}
                           onChange={e => setter(e.target.files?.[0] ?? null)}
@@ -608,7 +613,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
                   <div className="info-box warn" style={{ marginBottom: 16 }}>
                     <AlertTriangle size={16} strokeWidth={1.75} />
-                    <span>Your ID number (JMBG) is stored encrypted and used only for identity verification. It is <strong>never shown</strong> to other users.</span>
+                    <span>{t('idSecurityNote')}</span>
                   </div>
 
                   <button
@@ -616,7 +621,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                     onClick={handleVerification}
                     disabled={verifying || !idFront || !idBack}
                   >
-                    {verifying ? 'Submitting...' : 'Submit for Verification'}
+                    {verifying ? t('submittingVerif') : t('submitVerif')}
                   </button>
                 </>
               )}

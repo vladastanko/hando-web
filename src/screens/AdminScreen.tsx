@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, Coins, Hourglass, Check, X, RefreshCw, ChevronLeft, PartyPopper, ClipboardList, Banknote, Info } from 'lucide-react';
+import { Lock, Coins, Hourglass, Check, X, RefreshCw, ChevronLeft, PartyPopper, ClipboardList, Banknote, Info, ShieldCheck, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { timeAgo } from '../utils/format';
 
@@ -36,18 +36,35 @@ interface Stats {
   total_rsd_today: number;
 }
 
+interface VerifRecord {
+  user_id: string;
+  id_document_url: string | null;
+  selfie_url: string | null;
+  status: string;
+  submitted_at: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+}
+
 export default function AdminScreen({ onExit }: { onExit: () => void }) {
-  const [authed,      setAuthed]      = useState(false);
-  const [pw,          setPw]          = useState('');
-  const [pwError,     setPwError]     = useState('');
-  const [orders,      setOrders]      = useState<Order[]>([]);
-  const [loading,     setLoading]     = useState(false);
-  const [actionId,    setActionId]    = useState<string | null>(null);
-  const [rejectId,    setRejectId]    = useState<string | null>(null);
-  const [rejectNote,  setRejectNote]  = useState('');
-  const [tab,         setTab]         = useState<'pending' | 'all'>('pending');
-  const [stats,       setStats]       = useState<Stats>({ pending: 0, approved_today: 0, total_rsd_today: 0 });
-  const [feedback,    setFeedback]    = useState('');
+  const [authed,        setAuthed]        = useState(false);
+  const [pw,            setPw]            = useState('');
+  const [pwError,       setPwError]       = useState('');
+  const [section,       setSection]       = useState<'orders' | 'verifications'>('orders');
+  const [orders,        setOrders]        = useState<Order[]>([]);
+  const [loading,       setLoading]       = useState(false);
+  const [actionId,      setActionId]      = useState<string | null>(null);
+  const [rejectId,      setRejectId]      = useState<string | null>(null);
+  const [rejectNote,    setRejectNote]    = useState('');
+  const [tab,           setTab]           = useState<'pending' | 'all'>('pending');
+  const [stats,         setStats]         = useState<Stats>({ pending: 0, approved_today: 0, total_rsd_today: 0 });
+  const [feedback,      setFeedback]      = useState('');
+  const [verifs,        setVerifs]        = useState<VerifRecord[]>([]);
+  const [verifLoading,  setVerifLoading]  = useState(false);
+  const [verifActionId, setVerifActionId] = useState<string | null>(null);
+  const [verifRejectId, setVerifRejectId] = useState<string | null>(null);
+  const [verifRejectNote, setVerifRejectNote] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,9 +95,54 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
     setLoading(false);
   }, []);
 
+  const loadVerifs = useCallback(async () => {
+    setVerifLoading(true);
+    const { data, error } = await supabase.rpc('get_pending_verifications');
+    if (error) {
+      setFeedback('❌ Could not load verifications: ' + error.message);
+    } else {
+      setVerifs((data as VerifRecord[]) ?? []);
+    }
+    setVerifLoading(false);
+  }, []);
+
+  const handleApproveVerif = async (v: VerifRecord) => {
+    setVerifActionId(v.user_id);
+    const { error } = await supabase.rpc('admin_approve_verification', { p_user_id: v.user_id });
+    setVerifActionId(null);
+    if (error) {
+      setFeedback(`❌ Error: ${error.message}`);
+    } else {
+      setFeedback(`✅ Verified! ${v.full_name}'s identity approved.`);
+      await loadVerifs();
+    }
+  };
+
+  const handleRejectVerif = async () => {
+    if (!verifRejectId) return;
+    setVerifActionId(verifRejectId);
+    const { error } = await supabase.rpc('admin_reject_verification', {
+      p_user_id: verifRejectId,
+      p_reason: verifRejectNote.trim() || 'Documents not accepted',
+    });
+    setVerifActionId(null);
+    setVerifRejectId(null);
+    setVerifRejectNote('');
+    if (error) {
+      setFeedback(`❌ Error: ${error.message}`);
+    } else {
+      setFeedback('✓ Verification rejected.');
+      await loadVerifs();
+    }
+  };
+
   useEffect(() => {
     if (authed) load();
   }, [authed, load]);
+
+  useEffect(() => {
+    if (authed && section === 'verifications') loadVerifs();
+  }, [authed, section, loadVerifs]);
 
   const handleLogin = () => {
     if (pw === ADMIN_PASSWORD) {
@@ -167,22 +229,48 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Coins size={22} strokeWidth={1.75} /> Credit Orders
+            <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', margin: 0 }}>
+              Handoo Admin
             </h1>
-            <p style={{ margin: '4px 0 0', color: 'var(--tx-2)', fontSize: '.875rem' }}>
-              Approve bank transfers to add credits to user accounts
-            </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-s btn-sm" onClick={load} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <><RefreshCw size={14} strokeWidth={1.75} /> Refresh</>}
+            <button className="btn btn-s btn-sm" onClick={section === 'orders' ? load : loadVerifs} disabled={loading || verifLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {(loading || verifLoading) ? <span className="spin" style={{ width: 14, height: 14 }} /> : <><RefreshCw size={14} strokeWidth={1.75} /> Refresh</>}
             </button>
             <button className="btn btn-g btn-sm" onClick={onExit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><ChevronLeft size={14} strokeWidth={1.75} /> App</button>
           </div>
         </div>
+
+        {/* Section switcher */}
+        <div className="tabs" style={{ marginBottom: 24 }}>
+          <button className={`tab${section === 'orders' ? ' on' : ''}`} onClick={() => setSection('orders')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Coins size={14} strokeWidth={1.75} /> Credit Orders
+            {stats.pending > 0 && <span className="bdg bdg-warn">{stats.pending}</span>}
+          </button>
+          <button className={`tab${section === 'verifications' ? ' on' : ''}`} onClick={() => setSection('verifications')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ShieldCheck size={14} strokeWidth={1.75} /> Verifications
+            {verifs.length > 0 && <span className="bdg bdg-warn">{verifs.length}</span>}
+          </button>
+        </div>
+
+        {/* Feedback */}
+        {feedback && (
+          <div style={{
+            padding: '12px 16px', borderRadius: 'var(--r)', marginBottom: 16, fontSize: '.875rem', fontWeight: 600,
+            background: feedback.startsWith('❌') ? 'var(--err-s)' : 'var(--ok-s)',
+            border: `1px solid ${feedback.startsWith('❌') ? 'rgba(239,68,68,.3)' : 'rgba(34,197,94,.3)'}`,
+            color: feedback.startsWith('❌') ? 'var(--err)' : 'var(--ok)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            {feedback}
+            <button onClick={() => setFeedback('')} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex', alignItems: 'center' }}><X size={16} strokeWidth={1.75} /></button>
+          </div>
+        )}
+
+        {/* ── CREDIT ORDERS ─────────────────────────────── */}
+        {section === 'orders' && (<>
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
@@ -202,20 +290,6 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
             </div>
           ))}
         </div>
-
-        {/* Feedback */}
-        {feedback && (
-          <div style={{
-            padding: '12px 16px', borderRadius: 'var(--r)', marginBottom: 16, fontSize: '.875rem', fontWeight: 600,
-            background: feedback.startsWith('❌') ? 'var(--err-s)' : 'var(--ok-s)',
-            border: `1px solid ${feedback.startsWith('❌') ? 'rgba(239,68,68,.3)' : 'rgba(34,197,94,.3)'}`,
-            color: feedback.startsWith('❌') ? 'var(--err)' : 'var(--ok)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            {feedback}
-            <button onClick={() => setFeedback('')} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex', alignItems: 'center' }}><X size={16} strokeWidth={1.75} /></button>
-          </div>
-        )}
 
         {/* Tabs */}
         <div className="tabs" style={{ marginBottom: 16 }}>
@@ -364,6 +438,123 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
               </div>
             ))}
           </div>
+        )}
+
+        </>)}
+
+        {/* ── VERIFICATIONS ─────────────────────────────── */}
+        {section === 'verifications' && (
+          verifLoading ? (
+            <div className="loading"><span className="spin" />Loading verifications...</div>
+          ) : verifs.length === 0 ? (
+            <div className="empty">
+              <span className="empty-ic"><ShieldCheck size={32} strokeWidth={1.5} /></span>
+              <span className="empty-t">No pending verifications</span>
+              <span className="empty-s">All ID submissions have been reviewed.</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {verifs.map(v => (
+                <div key={v.user_id} style={{
+                  background: 'var(--bg-el)', border: '1.5px solid var(--border)',
+                  borderRadius: 'var(--r-lg)', padding: '16px 20px',
+                  borderLeft: '4px solid var(--warn)',
+                }}>
+                  {/* User info */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%', background: 'var(--brand-grad)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '.9375rem', fontWeight: 800, color: '#fff', flexShrink: 0,
+                      }}>
+                        {v.full_name?.charAt(0).toUpperCase() ?? '?'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '.9375rem' }}>{v.full_name}</div>
+                        <div style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{v.email}</div>
+                        {v.phone && <div style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{v.phone}</div>}
+                        <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', marginTop: 2 }}>Submitted {timeAgo(v.submitted_at)}</div>
+                      </div>
+                    </div>
+                    <span className="bdg bdg-warn" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <Hourglass size={11} strokeWidth={1.75} /> Pending
+                    </span>
+                  </div>
+
+                  {/* Document images */}
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'ID Document (Front)', url: v.id_document_url },
+                      { label: 'Selfie / Back', url: v.selfie_url },
+                    ].map(doc => (
+                      <div key={doc.label} style={{ flex: '1 1 200px', minWidth: 180 }}>
+                        <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>{doc.label}</div>
+                        {doc.url ? (
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
+                            <img
+                              src={doc.url}
+                              alt={doc.label}
+                              style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 'var(--r)', border: '1px solid var(--border)', display: 'block' }}
+                              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                            />
+                            <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,.5)', borderRadius: 4, padding: '2px 5px', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                              <ExternalLink size={10} strokeWidth={2} color="#fff" />
+                            </div>
+                          </a>
+                        ) : (
+                          <div style={{ height: 140, borderRadius: 'var(--r)', border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx-3)', fontSize: '.8125rem' }}>
+                            No file
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className="btn btn-d btn-sm"
+                      onClick={() => { setVerifRejectId(v.user_id); setVerifRejectNote(''); }}
+                      disabled={verifActionId === v.user_id}
+                    >
+                      Reject
+                    </button>
+                    <button
+                      className="btn btn-ok btn-sm"
+                      onClick={() => handleApproveVerif(v)}
+                      disabled={verifActionId === v.user_id}
+                    >
+                      {verifActionId === v.user_id ? '...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={14} strokeWidth={2} /> Approve & Verify</span>}
+                    </button>
+                  </div>
+
+                  {/* Reject reason */}
+                  {verifRejectId === v.user_id && (
+                    <div style={{ marginTop: 14, padding: 14, background: 'var(--err-s)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 'var(--r)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--err)', marginBottom: 8 }}>
+                        Reject verification — reason (sent to user)
+                      </div>
+                      <input
+                        className="inp"
+                        placeholder="ID not clear, wrong document, photo mismatch, etc."
+                        value={verifRejectNote}
+                        onChange={e => setVerifRejectNote(e.target.value)}
+                        style={{ marginBottom: 10 }}
+                        autoFocus
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-s btn-sm" onClick={() => setVerifRejectId(null)}>Cancel</button>
+                        <button className="btn btn-d btn-sm" onClick={handleRejectVerif} disabled={verifActionId === v.user_id}>
+                          {verifActionId === v.user_id ? '...' : 'Confirm Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
         )}
 
       </div>
