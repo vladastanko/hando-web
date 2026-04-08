@@ -3,6 +3,7 @@ import { Coins, MapPin, ClipboardList, Undo2, Gift, Hourglass, Check, AlertTrian
 import type { CreditPackage, CreditTransaction } from '../types';
 import { credits, supabase } from '../lib/supabase';
 import { timeAgo } from '../utils/format';
+import { useLanguage } from '../i18n';
 
 interface Props {
   userId: string;
@@ -38,6 +39,7 @@ function generateReference(userId: string, packageId: string): string {
 }
 
 export default function CreditsScreen({ userId, userEmail, balance, onPurchased: _onPurchased, onMessage }: Props) {
+  const { t } = useLanguage();
   const [packages,       setPackages]       = useState<CreditPackage[]>([]);
   const [transactions,   setTransactions]   = useState<CreditTransaction[]>([]);
   const [loading,        setLoading]        = useState(true);
@@ -106,15 +108,15 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
   return (
     <div className="pg-n">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', marginBottom: 6 }}>Credits</h1>
-        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>Buy credits to post jobs and apply for work.</p>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', marginBottom: 6 }}>{t('statCredits')}</h1>
+        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>{t('creditSubtitle')}</p>
       </div>
 
       {/* Balance card */}
       <div className="cbal-card" style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: '.8125rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>Your balance</div>
+        <div style={{ fontSize: '.8125rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>{t('yourBalance')}</div>
         <div className="cbal-amt">{balance.toLocaleString()}</div>
-        <div className="cbal-lb">credits available</div>
+        <div className="cbal-lb">{t('creditsAvailable')}</div>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
           <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><MapPin size={14} strokeWidth={1.75} /> Post a job <strong>10 credits</strong></div>
           <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><ClipboardList size={14} strokeWidth={1.75} /> Apply for a job <strong>3 credits</strong></div>
@@ -124,7 +126,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
       {/* Pending orders */}
       {pendingOrders.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Pending Orders</h2>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>{t('pendingOrders')}</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pendingOrders.map(order => (
               <div key={order.id} style={{
@@ -140,9 +142,9 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                 </div>
                 <span className={`bdg ${order.status === 'approved' ? 'bdg-ok' : order.status === 'rejected' ? 'bdg-rej' : 'bdg-warn'}`}>
                   {order.status === 'approved'
-                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={12} strokeWidth={2} /> Approved</span>
-                    : order.status === 'rejected' ? 'Rejected'
-                    : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Hourglass size={12} strokeWidth={1.75} /> Pending</span>
+                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={12} strokeWidth={2} /> {t('approved')}</span>
+                    : order.status === 'rejected' ? t('rejected')
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Hourglass size={12} strokeWidth={1.75} /> {t('pending')}</span>
                   }
                 </span>
               </div>
@@ -153,7 +155,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
 
       {/* Package selection */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>Choose a Package</h2>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>{t('choosePackage')}</h2>
         <div className="three-col">
           {packages.map((pkg, i) => {
             const isSelected = selectedPkg?.id === pkg.id;
@@ -169,7 +171,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                   boxShadow: isSelected ? '0 8px 32px rgba(79,124,255,.3)' : undefined,
                 }}
               >
-                {i === FEATURED_PKG_INDEX && <div className="pkg-tag">Popular</div>}
+                {i === FEATURED_PKG_INDEX && <div className="pkg-tag">{t('popular')}</div>}
                 {isSelected && (
                   <div style={{
                     position: 'absolute', top: 10, right: 10,
@@ -188,7 +190,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                   className={`btn ${isSelected ? 'btn-p' : i === FEATURED_PKG_INDEX ? 'btn-p' : 'btn-s'} btn-fw btn-sm`}
                   onClick={e => { e.stopPropagation(); handleSelectPackage(pkg); }}
                 >
-                  {isSelected ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={13} strokeWidth={2} /> Selected</span> : 'Select'}
+                  {isSelected ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={13} strokeWidth={2} /> {t('selectedLabel')}</span> : t('selectLabel')}
                 </button>
               </div>
             );
@@ -205,7 +207,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
           animation: 'fadeIn .2s ease',
         }}>
           <div style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ClipboardList size={18} strokeWidth={1.75} /> Payment Instructions — {selectedPkg.price_rsd.toLocaleString()} RSD
+            <ClipboardList size={18} strokeWidth={1.75} /> {t('paymentInstructions')} — {selectedPkg.price_rsd.toLocaleString()} RSD
           </div>
           <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 16, lineHeight: 1.55 }}>
             Transfer <strong style={{ color: 'var(--tx)' }}>{selectedPkg.price_rsd.toLocaleString()} RSD</strong> to the account below.
@@ -236,7 +238,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
             borderRadius: 'var(--r)', marginBottom: 16,
           }}>
             <div style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <AlertTriangle size={13} strokeWidth={1.75} /> Payment Reference (required)
+              <AlertTriangle size={13} strokeWidth={1.75} /> {t('paymentReference')}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <code style={{
@@ -251,10 +253,10 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                 style={{ flexShrink: 0 }}
                 onClick={() => {
                   navigator.clipboard.writeText(generateReference(userId, selectedPkg.id));
-                  onMessage('Reference copied!', 'success');
+                  onMessage(t('copied'), 'success');
                 }}
               >
-                Copy
+                {t('copy')}
               </button>
             </div>
             <div style={{ fontSize: '.8125rem', color: 'var(--warn)', marginTop: 8 }}>
@@ -263,14 +265,14 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button className="btn btn-s" style={{ flex: '0 0 auto' }} onClick={() => setSelectedPkg(null)}>Cancel</button>
+            <button className="btn btn-s" style={{ flex: '0 0 auto' }} onClick={() => setSelectedPkg(null)}>{t('cancel')}</button>
             <button
               className="btn btn-p btn-lg"
               style={{ flex: 1, minWidth: 200, justifyContent: 'center' }}
               onClick={handleSubmitOrder}
               disabled={submitting}
             >
-              {submitting ? 'Submitting...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={16} strokeWidth={2} /> I've initiated the transfer</span>}
+              {submitting ? t('submitting') : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={16} strokeWidth={2} /> {t('confirmTransfer')}</span>}
             </button>
           </div>
         </div>
@@ -278,7 +280,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
 
       {/* How it works */}
       <div style={{ marginBottom: 28, padding: '16px 18px', background: 'var(--bg-el)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)' }}>
-        <div style={{ fontWeight: 700, fontSize: '.875rem', marginBottom: 12 }}>How it works</div>
+        <div style={{ fontWeight: 700, fontSize: '.875rem', marginBottom: 12 }}>{t('howItWorks')}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
             ['1', 'Select a credit package above'],
@@ -302,7 +304,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
       {/* Transaction history */}
       {transactions.length > 0 && (
         <div>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>Transaction History</h2>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>{t('transactionHistory')}</h2>
           <div className="card">
             <div style={{ padding: '0 20px' }}>
               {transactions.map((tx, i) => (

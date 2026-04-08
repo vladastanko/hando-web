@@ -114,6 +114,30 @@ const t = {
   buyCredits:     { en: 'Buy Credits',     sr: 'Kupi kredite'},
   transactions:   { en: 'Transactions',    sr: 'Transakcije' },
   noTransactions: { en: 'No transactions yet', sr: 'Nema transakcija' },
+  yourBalance:    { en: 'Your balance',    sr: 'Tvoje stanje' },
+  creditsAvailable: { en: 'credits available', sr: 'kredita dostupno' },
+  creditSubtitle: { en: 'Buy credits to post jobs and apply for work.', sr: 'Kupi kredite da objaviš posao ili se prijaviš.' },
+  pendingOrders:  { en: 'Pending Orders',  sr: 'Narudžbine na čekanju' },
+  choosePackage:  { en: 'Choose a Package', sr: 'Odaberi paket' },
+  popular:        { en: 'Popular',         sr: 'Popularno'  },
+  selectedLabel:  { en: 'Selected',        sr: 'Odabrano'   },
+  selectLabel:    { en: 'Select',          sr: 'Odaberi'    },
+  paymentInstructions: { en: 'Payment Instructions', sr: 'Uputstvo za plaćanje' },
+  paymentReference: { en: 'Payment Reference (required)', sr: 'Poziv na broj (obavezno)' },
+  copy:           { en: 'Copy',            sr: 'Kopiraj'    },
+  confirmTransfer: { en: "I've initiated the transfer", sr: 'Pokrenuo/la sam prenos' },
+  transactionHistory: { en: 'Transaction History', sr: 'Istorija transakcija' },
+  approved:       { en: 'Approved',        sr: 'Odobreno'   },
+  submitting:     { en: 'Submitting...',   sr: 'Slanje...'  },
+
+  // ── Notifications ─────────────────────────────────────────
+  notifications:  { en: 'Notifications',  sr: 'Obaveštenja' },
+  noNotifications:{ en: 'No notifications yet', sr: 'Nema obaveštenja' },
+
+  // ── Profile stats ─────────────────────────────────────────
+  workerRating:   { en: 'Worker rating',  sr: 'Ocena radnika' },
+  jobsPosted:     { en: 'Jobs posted',    sr: 'Objavljeni' },
+  totalEarned:    { en: 'Total earned',   sr: 'Ukupna zarada' },
 
   // ── Referral ─────────────────────────────────────────────
   referAFriend:   { en: 'Refer a Friend',  sr: 'Pozovi prijatelja' },
@@ -131,6 +155,12 @@ const t = {
   referStep2:     { en: 'They sign up using your link', sr: 'Oni se registruju putem tvog linka' },
   referStep3:     { en: 'Every 2 friends = 30 credits added to your balance', sr: 'Svakog 2. prijatelja = +30 kredita na stanje' },
   moreFriends:    { en: 'more friend(s) = +30 credits', sr: 'prijatelja više = +30 kredita' },
+
+  // ── Inbox ─────────────────────────────────────────────────
+  loadingInbox:   { en: 'Loading inbox...', sr: 'Učitavanje poruka...' },
+  noMessages:     { en: 'No messages yet', sr: 'Nema poruka' },
+  startConvo:     { en: 'Start the conversation — introduce yourself and confirm the details.', sr: 'Pokreni razgovor — predstavi se i potvrdi detalje.' },
+  typeMessage:    { en: 'Type a message…', sr: 'Napiši poruku…' },
 
   // ── Post Job ─────────────────────────────────────────────
   postAJob:       { en: 'Post a Job',      sr: 'Objavi posao' },

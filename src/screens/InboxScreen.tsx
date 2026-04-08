@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, Briefcase, ChevronLeft, CheckCheck, Send } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 // ── localStorage read-tracking (fallback when RLS blocks UPDATE) ──────
 const LS_KEY = (userId: string) => `handoo_read:${userId}`;
@@ -59,6 +60,7 @@ interface Props {
 }
 
 export default function InboxScreen({ currentUser, onUnreadChange, isActive }: Props) {
+  const { t } = useLanguage();
   const [conversations,  setConversations]  = useState<Conversation[]>([]);
   const [activeConv,     setActiveConv]     = useState<Conversation | null>(null);
   const [messages,       setMessages]       = useState<DbMessage[]>([]);
@@ -269,7 +271,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
   if (loading) return (
     <div className="loading" style={{ height: '60vh' }}>
-      <span className="spin" />Loading inbox...
+      <span className="spin" />{t('loadingInbox')}
     </div>
   );
 
@@ -318,7 +320,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
         {conversations.length === 0 ? (
           <div className="empty" style={{ padding: '40px 16px' }}>
             <span className="empty-ic"><MessageCircle size={32} strokeWidth={1.5} /></span>
-            <span className="empty-t">No messages yet</span>
+            <span className="empty-t">{t('noMessages')}</span>
             <span className="empty-s" style={{ textAlign: 'center', maxWidth: 200 }}>
               Conversations start when an employer accepts your application.
             </span>
@@ -403,7 +405,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
                 padding: '32px 0', lineHeight: 1.6,
               }}>
                 <div style={{ fontSize: '2rem', marginBottom: 8, opacity: .4 }}>Hi!</div>
-                Start the conversation — introduce yourself and confirm the details.
+                {t('startConvo')}
               </div>
             ) : (
               messages.map((msg, i) => {
@@ -460,7 +462,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
             <textarea
               ref={inputRef}
               className="chat-inp"
-              placeholder="Type a message… (Enter to send)"
+              placeholder={`${t('typeMessage')} (Enter)`}
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}

@@ -3,6 +3,7 @@ import { Bell, Check, X, Flag, Star, MapPin, AlertTriangle, Coins } from 'lucide
 import { notifications, supabase } from '../../lib/supabase';
 import type { Notification } from '../../types';
 import { timeAgo } from '../../utils/format';
+import { useLanguage } from '../../i18n';
 
 interface Props {
   userId: string;
@@ -24,6 +25,7 @@ function NotifIcon({ type }: { type: string }) {
 }
 
 export function NotificationBell({ userId, onNavigate }: Props) {
+  const { t } = useLanguage();
   const [open,   setOpen]   = useState(false);
   const [items,  setItems]  = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -117,11 +119,11 @@ export function NotificationBell({ userId, onNavigate }: Props) {
           zIndex: 300, animation: 'ddIn .15s ease',
         }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 800, fontSize: '.9375rem' }}>
-            Notifications
+            {t('notifications')}
           </div>
           {items.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tx-3)', fontSize: '.875rem' }}>
-              No notifications yet
+              {t('noNotifications')}
             </div>
           ) : (
             items.map(n => (

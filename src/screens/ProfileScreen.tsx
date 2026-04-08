@@ -261,23 +261,23 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         <div className="prof-stats">
           <div className="pstat">
             <div className="pstat-v">{profile?.completed_jobs_worker ?? 0}</div>
-            <div className="pstat-l">Jobs done</div>
+            <div className="pstat-l">{t('statJobsDone')}</div>
           </div>
           <div className="pstat">
             <div className="pstat-v">
               {computedRatingWorker > 0 ? computedRatingWorker.toFixed(1) : '—'}
             </div>
-            <div className="pstat-l">Worker rating</div>
+            <div className="pstat-l">{t('workerRating')}</div>
           </div>
           <div className="pstat">
             <div className="pstat-v">{profile?.completed_jobs_poster ?? 0}</div>
-            <div className="pstat-l">Jobs posted</div>
+            <div className="pstat-l">{t('jobsPosted')}</div>
           </div>
           <div className="pstat">
             <div className="pstat-v" style={{ fontSize: totalEarnings !== null && totalEarnings > 9999 ? '1rem' : undefined }}>
               {totalEarnings !== null ? `${totalEarnings.toLocaleString()} RSD` : '—'}
             </div>
-            <div className="pstat-l">Total earned</div>
+            <div className="pstat-l">{t('totalEarned')}</div>
           </div>
         </div>
       </div>

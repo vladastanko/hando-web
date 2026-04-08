@@ -60,6 +60,14 @@ function toIntScores(scores: Record<string, number>): Record<string, number> {
 
 export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc, onOpenChat }: Props) {
   const { t } = useLanguage();
+
+  const tStatus = (status: string) => {
+    if (status === 'pending')   return t('pending');
+    if (status === 'accepted')  return t('accepted');
+    if (status === 'rejected')  return t('rejected');
+    if (status === 'withdrawn') return t('withdrawn');
+    return status;
+  };
   const [myTab,          setMyTab]          = useState<MyTab>('applied');
   const [postedTab,      setPostedTab]      = useState<PostedTab>('open');
   const [myJobs,         setMyJobs]         = useState<Job[]>([]);
@@ -363,7 +371,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                           <span style={{ fontSize: '.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: statusColor }}>
-                            {app.status}
+                            {tStatus(app.status)}
                           </span>
                           <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{timeAgo(app.created_at)}</span>
                         </div>
@@ -406,7 +414,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         {/* FIX: withdraw opens confirmation modal */}
                         {app.status === 'pending' && (
                           <button className="btn btn-d btn-sm" onClick={() => setWithdrawTarget(app.id)} disabled={actionLoading === app.id}>
-                            {actionLoading === app.id ? '...' : 'Withdraw'}
+                            {actionLoading === app.id ? '...' : t('withdrawConfirm')}
                           </button>
                         )}
                         {canRate && (
@@ -495,13 +503,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         <div style={{ display: 'flex', gap: 10 }}>
                           {/* FIX: show real accepted count */}
                           <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                            <Users size={11} strokeWidth={1.75} />{accepted}/{job.crew_size} accepted
+                            <Users size={11} strokeWidth={1.75} />{accepted}/{job.crew_size} {t('accepted')}
                           </span>
                           {spots > 0 && job.status === 'open' && (
-                            <span style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 600 }}>{spots} spot{spots > 1 ? 's' : ''} open</span>
+                            <span style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 600 }}>{spots} {t('spots_open')}</span>
                           )}
                         </div>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>Posted {timeAgo(job.created_at)}</span>
+                        <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{t('postedAgo')} {timeAgo(job.created_at)}</span>
                       </div>
                     </div>
                   );
@@ -535,10 +543,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   {/* FIX: Stats use live acceptedCount */}
                   <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
                     {[
-                      { label: 'Applied', val: applicants.length, color: 'var(--tx)' },
-                      { label: 'Pending', val: pendingCount, color: 'var(--warn)' },
-                      { label: 'Accepted', val: acceptedCount, color: 'var(--ok)' },
-                      { label: 'Spots left', val: Math.max((panelJob.crew_size ?? 1) - acceptedCount, 0), color: 'var(--brand)' },
+                      { label: t('applied_label'), val: applicants.length, color: 'var(--tx)' },
+                      { label: t('pending'), val: pendingCount, color: 'var(--warn)' },
+                      { label: t('accepted'), val: acceptedCount, color: 'var(--ok)' },
+                      { label: t('spotsLeft'), val: Math.max((panelJob.crew_size ?? 1) - acceptedCount, 0), color: 'var(--brand)' },
                     ].map(s => (
                       <div key={s.label} style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.val}</div>
@@ -578,7 +586,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         cursor: 'pointer', transition: 'all var(--tf)',
                       }}
                     >
-                      {s === 'newest' ? 'Newest' : s === 'rating' ? 'Rating' : 'Jobs done'}
+                      {s === 'newest' ? t('newest') : s === 'rating' ? t('rating') : t('jobsDone')}
                     </button>
                   ))}
                 </div>
@@ -620,7 +628,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                                   {app.worker?.full_name ?? 'Worker'}
                                 </span>
                                 <span style={{ fontSize: '.625rem', fontWeight: 700, color: statusColor, textTransform: 'uppercase', flexShrink: 0 }}>
-                                  {app.status}
+                                  {tStatus(app.status)}
                                 </span>
                               </div>
                               <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginTop: 1 }}>
@@ -662,16 +670,16 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <span style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: STATUS_COLORS[selectedApp.status] ?? 'var(--tx-3)' }}>
-                            {selectedApp.status}
+                            {tStatus(selectedApp.status)}
                           </span>
                         </div>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
                         {([
-                          { icon: <Star size={12} strokeWidth={1.75} />, label: 'Rating', val: selectedApp.worker?.rating_as_worker ? selectedApp.worker.rating_as_worker.toFixed(1) : '—' },
-                          { icon: <Check size={12} strokeWidth={1.75} />, label: 'Jobs done', val: selectedApp.worker?.completed_jobs_worker ?? 0 },
-                          { icon: <ClipboardList size={12} strokeWidth={1.75} />, label: 'Jobs posted', val: selectedApp.worker?.completed_jobs_poster ?? 0 },
+                          { icon: <Star size={12} strokeWidth={1.75} />, label: t('rating'), val: selectedApp.worker?.rating_as_worker ? selectedApp.worker.rating_as_worker.toFixed(1) : '—' },
+                          { icon: <Check size={12} strokeWidth={1.75} />, label: t('jobsDone'), val: selectedApp.worker?.completed_jobs_worker ?? 0 },
+                          { icon: <ClipboardList size={12} strokeWidth={1.75} />, label: t('jobsPosted'), val: selectedApp.worker?.completed_jobs_poster ?? 0 },
                         ] as { icon: React.ReactNode; label: string; val: string | number }[]).map(s => (
                           <div key={s.label} style={{ padding: '10px 12px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', textAlign: 'center' }}>
                             <div style={{ fontSize: '1.125rem', fontWeight: 800 }}>{s.val}</div>
