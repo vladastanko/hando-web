@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Star, Map, Banknote, Info, ChevronLeft } from 'lucide-react';
-import { auth } from '../lib/supabase';
+import { auth, referrals as referralsApi } from '../lib/supabase';
 
 type Mode = 'login' | 'signup' | 'forgot';
 
@@ -34,6 +34,9 @@ export default function AuthScreen({ onSuccess }: Props) {
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState<'ok' | 'err'>('err');
   const [loading, setLoading] = useState(false);
+
+  // Capture referral code from URL (?ref=XXXXXXXX)
+  const refCode = new URLSearchParams(window.location.search).get('ref') ?? '';
 
   const showMsg = (m: string, t: 'ok' | 'err' = 'err') => { setMsg(m); setMsgType(t); };
   const clear = () => setMsg('');
@@ -86,6 +89,11 @@ export default function AuthScreen({ onSuccess }: Props) {
         }, { onConflict: 'id' });
       } catch {
         // Trigger already handled it — ignore
+      }
+
+      // Record referral if user came via referral link
+      if (refCode && data.user) {
+        referralsApi.recordReferral(refCode, data.user.id).catch(() => {/* silent */});
       }
 
       if (!data.session) {

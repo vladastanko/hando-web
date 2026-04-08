@@ -18,9 +18,10 @@ import ProfileScreen from './screens/ProfileScreen';
 import CreditsScreen from './screens/CreditsScreen';
 import InboxScreen from './screens/InboxScreen';
 import AdminScreen from './screens/AdminScreen';
+import ReferralScreen from './screens/ReferralScreen';
 
 type AppMode = 'find' | 'post';
-type View    = TabKey | 'credits';
+type View    = TabKey | 'credits' | 'referral';
 
 interface SessionUser { id: string; email?: string; }
 
@@ -271,6 +272,19 @@ export default function App() {
               profile={profile}
               onProfileUpdated={setProfile}
               onMessage={(m, t) => toast(m, t ?? 'info')}
+              onReferralClick={() => setView('referral')}
+            />
+          </div>
+        )}
+
+        {/* ── Referral ─────────────────────────────────────── */}
+        {view === 'referral' && (
+          <div className="view-enter" key="referral">
+            <ReferralScreen
+              userId={user!.id}
+              referralCode={profile?.referral_code ?? null}
+              onBack={() => setView('profile')}
+              onMessage={(m, t) => toast(m, t === 'success' ? 'success' : 'error')}
             />
           </div>
         )}

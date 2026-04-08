@@ -617,3 +617,48 @@ export const notifications = {
       .subscribe();
   },
 };
+
+// ============================================================
+// REFERRALS
+// ============================================================
+
+export const referrals = {
+  /** Get the current user's referral code */
+  getMyCode: async (userId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('referral_code')
+      .eq('id', userId)
+      .single();
+    return data?.referral_code ?? null;
+  },
+
+  /** Get referrals made by this user */
+  getMyReferrals: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('referrals')
+      .select('id, status, created_at, referred_user:profiles!referred_user_id(full_name, avatar_url)')
+      .eq('referrer_id', userId)
+      .order('created_at', { ascending: false });
+    return { data, error: error?.message ?? null };
+  },
+
+  /** Record a referral when a new user signs up via referral code */
+  recordReferral: async (referralCode: string, newUserId: string): Promise<void> => {
+    // Find the referrer by code
+    const { data: referrer } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('referral_code', referralCode)
+      .single();
+
+    if (!referrer || referrer.id === newUserId) return;
+
+    // Insert referral (ignore duplicates — unique constraint on referred_user_id)
+    await supabase.from('referrals').insert({
+      referrer_id: referrer.id,
+      referred_user_id: newUserId,
+      status: 'completed',
+    }).select();
+  },
+};

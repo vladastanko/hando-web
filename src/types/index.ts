@@ -37,8 +37,18 @@ export interface Profile {
   is_phone_verified: boolean;
   is_email_verified: boolean;
   location?: { lat: number; lng: number };
+  referral_code?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referred_user_id: string;
+  status: 'pending' | 'completed';
+  created_at: string;
+  referred_user?: { full_name: string; avatar_url?: string };
 }
 
 export interface Category {

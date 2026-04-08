@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, type ChangeEvent } from 'react';
-import { MapPin, User, Mail, Camera, Hourglass, Star, Check, AlertTriangle, Phone, CreditCard } from 'lucide-react';
+import { MapPin, User, Mail, Camera, Hourglass, Star, Check, AlertTriangle, Phone, CreditCard, Gift } from 'lucide-react';
 import type { Profile, Rating } from '../types';
 import { profiles, ratings as ratingsApi } from '../lib/supabase';
 import { Avatar } from '../components/ui/Avatar';
@@ -12,12 +12,13 @@ interface Props {
   profile: Profile | null;
   onProfileUpdated: (p: Profile) => void;
   onMessage: (msg: string, type?: 'success' | 'error') => void;
+  onReferralClick?: () => void;
 }
 
 type ProfileTab = 'overview' | 'edit' | 'ratings' | 'verification';
 type RatingsTab = 'received' | 'given';
 
-export default function ProfileScreen({ currentUser, profile, onProfileUpdated, onMessage }: Props) {
+export default function ProfileScreen({ currentUser, profile, onProfileUpdated, onMessage, onReferralClick }: Props) {
   const [tab, setTab] = useState<ProfileTab>('overview');
   const [ratingsTab, setRatingsTab] = useState<RatingsTab>('received');
   const [ratingsReceived, setRatingsReceived] = useState<Rating[]>([]);
@@ -316,6 +317,16 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                 <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Bio</div>
                 <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65 }}>{profile.bio}</div>
               </div>
+            )}
+            {onReferralClick && (
+              <button
+                className="btn btn-g btn-fw"
+                onClick={onReferralClick}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <Gift size={18} strokeWidth={1.75} />
+                Refer a Friend — Earn Credits
+              </button>
             )}
           </div>
         </div>
