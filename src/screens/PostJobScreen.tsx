@@ -40,6 +40,8 @@ const EXTRA_CATEGORIES = [
 
 // ── Nominatim autocomplete ────────────────────────────────────
 interface NominatimResult {
+  lat: string;
+  lon: string;
   display_name: string;
   address: { city?: string; town?: string; village?: string; road?: string; pedestrian?: string; suburb?: string; };
 }
@@ -84,12 +86,13 @@ function getLabel(r: NominatimResult, type: 'city' | 'street'): string {
 interface AutocompleteProps {
   value: string;
   onChange: (v: string) => void;
+  onSelectCoords?: (lat: number, lng: number) => void;
   placeholder: string;
   type: 'city' | 'street';
   cityContext?: string;
 }
 
-function LocationAutocomplete({ value, onChange, placeholder, type, cityContext }: AutocompleteProps) {
+function LocationAutocomplete({ value, onChange, onSelectCoords, placeholder, type, cityContext }: AutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState(value);
   const results = useNominatimSearch(inputVal, type, cityContext);
@@ -109,6 +112,10 @@ function LocationAutocomplete({ value, onChange, placeholder, type, cityContext 
     const label = getLabel(r, type);
     setInputVal(label);
     onChange(label);
+    // Pass geocoded coordinates to parent
+    if (onSelectCoords && r.lat && r.lon) {
+      onSelectCoords(parseFloat(r.lat), parseFloat(r.lon));
+    }
     setOpen(false);
   };
 
@@ -190,6 +197,9 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
   const [categoryId, setCategoryId] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
+  // Geocoded coordinates from address autocomplete (preferred over user's GPS)
+  const [addressLat, setAddressLat] = useState<number | null>(null);
+  const [addressLng, setAddressLng] = useState<number | null>(null);
   const [payPerWorker, setPayPerWorker] = useState('');
   const [crewSize, setCrewSize] = useState('1');
   const [scheduledDate, setScheduledDate] = useState('');
@@ -226,8 +236,9 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
       category_id: categoryId,
       address: address.trim(),
       city: city.trim(),
-      lat: userLocation?.lat ?? 44.8176,
-      lng: userLocation?.lng ?? 20.4633,
+      // Use geocoded address coords first, fall back to user GPS, then Belgrade default
+      lat: addressLat ?? userLocation?.lat ?? 44.8176,
+      lng: addressLng ?? userLocation?.lng ?? 20.4633,
       scheduled_date: `${scheduledDate}T${scheduledTime}:00`,
       duration_hours: Number(durationHours) || 2,
       pay_per_worker: Number(payPerWorker),
@@ -308,7 +319,14 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
             </div>
             <div className="fld">
               <label className="flb">Street / Area *</label>
-              <LocationAutocomplete value={address} onChange={setAddress} placeholder="Bulevar Oslobođenja" type="street" cityContext={city} />
+              <LocationAutocomplete
+                value={address}
+                onChange={v => { setAddress(v); setAddressLat(null); setAddressLng(null); }}
+                onSelectCoords={(lat, lng) => { setAddressLat(lat); setAddressLng(lng); }}
+                placeholder="Bulevar Oslobođenja"
+                type="street"
+                cityContext={city}
+              />
             </div>
           </div>
           <div className="loc-strip">
@@ -316,10 +334,14 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
               <MapPin size={20} strokeWidth={1.75} />
               <div>
                 <div style={{ fontSize: '.875rem', fontWeight: 600 }}>
-                  {userLocation?.place?.display ?? (userLocation ? 'Location captured' : 'No location set')}
+                  {addressLat != null
+                    ? `${address} (geocoded)`
+                    : userLocation?.place?.display ?? (userLocation ? 'Location captured' : 'No location set')}
                 </div>
                 <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2 }}>
-                  {userLocation ? 'GPS coordinates used for map pin' : 'Allow location for accurate map placement'}
+                  {addressLat != null
+                    ? 'Map pin placed at selected address'
+                    : userLocation ? 'Select address above for precise pin placement' : 'Allow location for accurate map placement'}
                 </div>
               </div>
             </div>

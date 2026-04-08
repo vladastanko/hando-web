@@ -208,18 +208,16 @@ export default function App() {
                   <div className="stats-row">
                     {(
                       [
-                        { icon: <Briefcase size={18} strokeWidth={1.75} />, value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
-                        { icon: <Star size={18} strokeWidth={1.75} />, value: (profile?.total_ratings_worker ?? 0) > 0 ? (profile?.rating_as_worker ?? 0).toFixed(1) : '—', label: 'My rating' },
-                        { icon: <Coins size={18} strokeWidth={1.75} />, value: creditBalance, label: 'Credits' },
-                        { icon: <MapPin size={18} strokeWidth={1.75} />, value: jobsList.length, label: 'Open nearby' },
+                        { icon: <Briefcase size={20} strokeWidth={1.75} />, value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
+                        { icon: <Star size={20} strokeWidth={1.75} />, value: (profile?.total_ratings_worker ?? 0) > 0 ? (profile?.rating_as_worker ?? 0).toFixed(1) : '—', label: 'My rating' },
+                        { icon: <Coins size={20} strokeWidth={1.75} />, value: creditBalance, label: 'Credits' },
+                        { icon: <MapPin size={20} strokeWidth={1.75} />, value: jobsList.length, label: 'Nearby' },
                       ] as Array<{ icon: React.ReactNode; value: string | number; label: string }>
                     ).map(s => (
                       <div key={s.label} className="stat-ch">
-                        <span className="stat-ic">{s.icon}</span>
-                        <div>
-                          <div className="stat-v">{s.value}</div>
-                          <div className="stat-lb">{s.label}</div>
-                        </div>
+                        <div className="stat-ic">{s.icon}</div>
+                        <div className="stat-v">{s.value}</div>
+                        <div className="stat-lb">{s.label}</div>
                       </div>
                     ))}
                   </div>

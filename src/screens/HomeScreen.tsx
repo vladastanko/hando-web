@@ -94,53 +94,51 @@ export default function HomeScreen({
       <div className="pg">
 
         {/* ── Search + controls row ───────────────────────── */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          {/* Search input — takes all available space */}
+          <div style={{ flex: '1 1 160px', minWidth: 0, position: 'relative' }}>
             <span className="srch-ic"><Search size={16} strokeWidth={1.75} /></span>
             <input
               className="srch-inp"
-              placeholder="Search jobs, cities, categories..."
+              placeholder="Search jobs..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
 
-          <button
-            className="btn btn-s btn-sm"
-            onClick={onRequestLocation}
-            disabled={locationLoading}
-            title={userLocation ? 'Update location' : 'Enable location'}
-            style={{ flexShrink: 0 }}
-          >
-            {locationLoading
-              ? <span className="spin" style={{ width: 14, height: 14 }} />
-              : <MapPin size={16} strokeWidth={1.75} color={userLocation ? 'var(--ok)' : undefined} />
-            }
-          </button>
+          {/* Icon-only action buttons grouped */}
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              className="btn btn-s btn-sm"
+              onClick={onRequestLocation}
+              disabled={locationLoading}
+              title={userLocation ? 'Update location' : 'Enable location'}
+            >
+              {locationLoading
+                ? <span className="spin" style={{ width: 14, height: 14 }} />
+                : <MapPin size={16} strokeWidth={1.75} color={userLocation ? 'var(--ok)' : undefined} />
+              }
+            </button>
 
-          <button
-            className="btn btn-s btn-sm"
-            onClick={onRefresh}
-            disabled={loading}
-            title="Refresh"
-            style={{ flexShrink: 0 }}
-          >
-            {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <RefreshCw size={16} strokeWidth={1.75} />}
-          </button>
+            <button className="btn btn-s btn-sm" onClick={onRefresh} disabled={loading} title="Refresh">
+              {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <RefreshCw size={16} strokeWidth={1.75} />}
+            </button>
 
-          <button
-            className={`btn btn-sm ${activeFiltersCount > 0 ? 'btn-p' : 'btn-s'}`}
-            onClick={() => setShowFilters(v => !v)}
-            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-          >
-            <SlidersHorizontal size={16} strokeWidth={1.75} />
-            {activeFiltersCount > 0 ? `Filters (${activeFiltersCount})` : 'Filters'}
-          </button>
+            <button
+              className={`btn btn-sm ${activeFiltersCount > 0 ? 'btn-p' : 'btn-s'}`}
+              onClick={() => setShowFilters(v => !v)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <SlidersHorizontal size={16} strokeWidth={1.75} />
+              {activeFiltersCount > 0 ? activeFiltersCount : ''}
+            </button>
+          </div>
 
-          <div className="vs">
-            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><List size={14} strokeWidth={1.75} /> List</button>
-            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Map size={14} strokeWidth={1.75} /> Map</button>
-            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Columns2 size={14} strokeWidth={1.75} /> Split</button>
+          {/* View switcher */}
+          <div className="vs" style={{ flexShrink: 0 }}>
+            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><List size={14} strokeWidth={1.75} /><span className="vs-label">List</span></button>
+            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Map size={14} strokeWidth={1.75} /><span className="vs-label">Map</span></button>
+            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Columns2 size={14} strokeWidth={1.75} /><span className="vs-label">Split</span></button>
           </div>
         </div>
 

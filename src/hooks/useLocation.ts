@@ -36,7 +36,7 @@ export function useLocation() {
           setLoading(false);
           resolve();
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     });
   }, []);
@@ -60,7 +60,7 @@ export function useLocation() {
         hasInitial.current = true;
       },
       () => { /* silent watch errors */ },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
 
     return () => {
