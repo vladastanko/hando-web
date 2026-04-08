@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Coins, User, Undo2 } from 'lucide-react';
 import type { Profile } from '../../types';
 import { getInitials } from '../../utils/format';
 import { NotificationBell } from '../ui/NotificationBell';
@@ -75,7 +76,7 @@ export function TopBar({ profile, email, creditBalance, mode, userId, onModeChan
         {/* Right actions */}
         <div className="tb-right">
           <button className="cred-chip" onClick={onCreditsClick} title="Buy credits">
-            🪙 <span>{creditBalance}</span>
+            <Coins size={16} strokeWidth={1.75} /> <span>{creditBalance}</span>
           </button>
 
           {userId && (
@@ -100,14 +101,14 @@ export function TopBar({ profile, email, creditBalance, mode, userId, onModeChan
                   <div className="dd-email">{email}</div>
                 </div>
                 <button className="dd-item" onClick={() => { setDdOpen(false); onProfileClick(); }}>
-                  <span>👤</span> My Profile
+                  <User size={16} strokeWidth={1.75} /> My Profile
                 </button>
                 <button className="dd-item" onClick={() => { setDdOpen(false); onCreditsClick(); }}>
-                  <span>🪙</span> Credits & Billing
+                  <Coins size={16} strokeWidth={1.75} /> Credits & Billing
                 </button>
                 <div className="dd-div" />
                 <button className="dd-item danger" onClick={() => { setDdOpen(false); onLogout(); }}>
-                  <span>↩</span> Sign out
+                  <Undo2 size={16} strokeWidth={1.75} /> Sign out
                 </button>
               </div>
             )}

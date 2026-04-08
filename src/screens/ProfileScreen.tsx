@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, type ChangeEvent } from 'react';
+import React, { useState, useCallback, useEffect, type ChangeEvent } from 'react';
+import { MapPin, User, Mail, Camera, Hourglass, Star, Check, AlertTriangle, Phone, CreditCard } from 'lucide-react';
 import type { Profile, Rating } from '../types';
 import { profiles, ratings as ratingsApi } from '../lib/supabase';
 import { Avatar } from '../components/ui/Avatar';
@@ -226,7 +227,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                 cursor: avatarUploading ? 'wait' : 'pointer', fontSize: '.75rem',
                 boxShadow: '0 2px 8px rgba(0,0,0,.4)',
               }}>
-                {avatarUploading ? '⏳' : '📷'}
+                {avatarUploading ? <Hourglass size={14} strokeWidth={1.75} /> : <Camera size={14} strokeWidth={1.75} />}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} disabled={avatarUploading} />
               </label>
             )}
@@ -234,7 +235,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
           <div className="prof-info">
             <div className="prof-n">{displayName}</div>
-            {profile?.city && <div className="prof-c">📍 {profile.city}</div>}
+            {profile?.city && <div className="prof-c" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} strokeWidth={1.75} /> {profile.city}</div>}
 
             {/* Inline rating summary */}
             {computedRatingWorker > 0 && (
@@ -247,8 +248,8 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
             <div className="prof-bdgs">
               <StatusBadge status={profile?.verification_status ?? 'unverified'} />
-              {profile?.is_email_verified && <span className="bdg bdg-ok">✉ Email verified</span>}
-              {profile?.is_phone_verified && <span className="bdg bdg-ok">📱 Phone verified</span>}
+              {profile?.is_email_verified && <span className="bdg bdg-ok"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Email verified</span>}
+              {profile?.is_phone_verified && <span className="bdg bdg-ok"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Phone verified</span>}
             </div>
           </div>
         </div>
@@ -295,15 +296,15 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         <div className="card">
           <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {([
-              ['👤', 'Full name', displayName],
-              ['✉', 'Email', currentUser.email ?? '—'],
-              ['📍', 'City', profile?.city || 'Not set'],
-            ] as [string, string, string][]).map(([icon, label, val]) => (
+              [<User size={18} strokeWidth={1.75} />, 'Full name', displayName],
+              [<Mail size={18} strokeWidth={1.75} />, 'Email', currentUser.email ?? '—'],
+              [<MapPin size={18} strokeWidth={1.75} />, 'City', profile?.city || 'Not set'],
+            ] as [React.ReactNode, string, string][]).map(([icon, label, val]) => (
               <div key={label} style={{
                 display: 'flex', gap: 12, padding: '12px 14px',
                 background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)',
               }}>
-                <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>{icon}</span>
+                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', color: 'var(--tx-2)' }}>{icon}</span>
                 <div>
                   <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
                   <div style={{ fontSize: '.9375rem', fontWeight: 500 }}>{val}</div>
@@ -312,7 +313,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
             ))}
             {profile?.bio && (
               <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)' }}>
-                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>📝 Bio</div>
+                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Bio</div>
                 <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65 }}>{profile.bio}</div>
               </div>
             )}
@@ -399,7 +400,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               <div className="loading"><span className="spin" />Loading...</div>
             ) : activeRatings.length === 0 ? (
               <div className="empty" style={{ padding: '28px 0' }}>
-                <span className="empty-ic">⭐</span>
+                <span className="empty-ic"><Star size={32} strokeWidth={1.5} /></span>
                 <span className="empty-t">{ratingsTab === 'received' ? 'No ratings received yet' : 'No ratings given yet'}</span>
                 <span className="empty-s">
                   {ratingsTab === 'received'
@@ -441,7 +442,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               {/* Email */}
               <div className="verif-item">
                 <div className="verif-l">
-                  <span style={{ fontSize: '1.25rem' }}>✉</span>
+                  <Mail size={20} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Email address</div>
                     <div style={{ fontSize: '.75rem', color: profile?.is_email_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
@@ -450,7 +451,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   </div>
                 </div>
                 {profile?.is_email_verified
-                  ? <span className="bdg bdg-ok">✓ Verified</span>
+                  ? <span className="bdg bdg-ok"><Check size={11} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Verified</span>
                   : <button className="btn btn-s btn-sm" onClick={handleEmailVerify} disabled={emailSent || emailLoading}>
                       {emailLoading ? '...' : emailSent ? 'Sent ✓' : 'Send link'}
                     </button>
@@ -461,7 +462,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="verif-item">
                   <div className="verif-l">
-                    <span style={{ fontSize: '1.25rem' }}>📱</span>
+                    <Phone size={20} strokeWidth={1.75} />
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Phone number</div>
                       <div style={{ fontSize: '.75rem', color: profile?.is_phone_verified ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
@@ -509,7 +510,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               {/* ID card status */}
               <div className="verif-item">
                 <div className="verif-l">
-                  <span style={{ fontSize: '1.25rem' }}>🪪</span>
+                  <CreditCard size={20} strokeWidth={1.75} />
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>Identity (ID card)</div>
                     <div style={{ fontSize: '.75rem', color: profile?.verification_status === 'verified' ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
@@ -520,7 +521,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   </div>
                 </div>
                 <span className={`bdg ${profile?.verification_status === 'verified' ? 'bdg-ok' : 'bdg-neu'}`}>
-                  {profile?.verification_status === 'verified' ? '✓ Verified' : '–'}
+                  {profile?.verification_status === 'verified' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} strokeWidth={2} />Verified</span> : '–'}
                 </span>
               </div>
             </div>
@@ -536,14 +537,14 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
               {profile?.verification_status === 'pending' && (
                 <div className="info-box warn" style={{ marginBottom: 16 }}>
-                  <span>⏳</span>
+                  <Hourglass size={16} strokeWidth={1.75} />
                   <span>Your documents are currently under review. You'll be notified by email once verification is complete (up to 48h).</span>
                 </div>
               )}
 
               {profile?.verification_status === 'verified' && (
                 <div className="info-box ok" style={{ marginBottom: 16 }}>
-                  <span>✅</span>
+                  <Check size={16} strokeWidth={1.75} />
                   <span>Your identity has been verified. Your profile shows the verified badge.</span>
                 </div>
               )}
@@ -556,7 +557,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   ] as [string, string, File | null, (f: File | null) => void][]).map(([id, label, file, setter]) => (
                     <div key={id} className="verif-item" style={{ marginBottom: 10 }}>
                       <div className="verif-l">
-                        <span style={{ fontSize: '1.25rem' }}>🪪</span>
+                        <CreditCard size={20} strokeWidth={1.75} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{label}</div>
                           <div style={{ fontSize: '.75rem', color: file ? 'var(--ok)' : 'var(--tx-2)', marginTop: 2 }}>
@@ -575,7 +576,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                   ))}
 
                   <div className="info-box warn" style={{ marginBottom: 16 }}>
-                    <span>⚠️</span>
+                    <AlertTriangle size={16} strokeWidth={1.75} />
                     <span>Your ID number (JMBG) is stored encrypted and used only for identity verification. It is <strong>never shown</strong> to other users.</span>
                   </div>
 

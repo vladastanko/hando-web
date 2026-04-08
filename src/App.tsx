@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Briefcase, Star, Coins, MapPin, ChevronLeft } from 'lucide-react';
 import './index.css';
 import { auth, credits as creditsApi, jobs as jobsApi, profiles as profilesApi } from './lib/supabase';
 import type { Category, Job, Profile } from './types';
@@ -173,8 +174,8 @@ export default function App() {
         {view === 'credits' && (
           <div className="view-enter" key="credits">
             <div className="pg" style={{ paddingBottom: 0 }}>
-              <button className="btn btn-g btn-sm" onClick={() => setView(activeTab)}>
-                ← Back
+              <button className="btn btn-g btn-sm" onClick={() => setView(activeTab)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <ChevronLeft size={16} strokeWidth={1.75} /> Back
               </button>
             </div>
             <CreditsScreen
@@ -206,11 +207,11 @@ export default function App() {
                   <div className="stats-row">
                     {(
                       [
-                        { icon: '💼', value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
-                        { icon: '⭐', value: profile?.rating_as_worker ? profile.rating_as_worker.toFixed(1) : '—', label: 'My rating' },
-                        { icon: '🪙', value: creditBalance, label: 'Credits' },
-                        { icon: '📌', value: jobsList.length, label: 'Open nearby' },
-                      ] as Array<{ icon: string; value: string | number; label: string }>
+                        { icon: <Briefcase size={18} strokeWidth={1.75} />, value: profile?.completed_jobs_worker ?? 0, label: 'Jobs done' },
+                        { icon: <Star size={18} strokeWidth={1.75} />, value: (profile?.total_ratings_worker ?? 0) > 0 ? (profile?.rating_as_worker ?? 0).toFixed(1) : '—', label: 'My rating' },
+                        { icon: <Coins size={18} strokeWidth={1.75} />, value: creditBalance, label: 'Credits' },
+                        { icon: <MapPin size={18} strokeWidth={1.75} />, value: jobsList.length, label: 'Open nearby' },
+                      ] as Array<{ icon: React.ReactNode; value: string | number; label: string }>
                     ).map(s => (
                       <div key={s.label} className="stat-ch">
                         <span className="stat-ic">{s.icon}</span>

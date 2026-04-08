@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { MapPin, Coins } from 'lucide-react';
 import { jobs } from '../lib/supabase';
 import type { Category } from '../types';
 import type { UserLocation } from '../hooks/useLocation';
@@ -312,7 +313,7 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
           </div>
           <div className="loc-strip">
             <div className="loc-info">
-              <span style={{ fontSize: '1.25rem' }}>📍</span>
+              <MapPin size={20} strokeWidth={1.75} />
               <div>
                 <div style={{ fontSize: '.875rem', fontWeight: 600 }}>
                   {userLocation?.place?.display ?? (userLocation ? 'Location captured' : 'No location set')}
@@ -354,15 +355,15 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
         {/* Footer */}
         <div className="psect">
           <div className="cred-notice" style={{ marginBottom: !canPost ? 10 : 16 }}>
-            <span style={{ fontSize: '1.25rem' }}>🪙</span>
+            <Coins size={18} strokeWidth={1.75} />
             <span>
               Posting costs <strong>10 credits</strong>. Your balance: <strong>{creditBalance} credits</strong>.
               {!canPost && <span style={{ color: 'var(--err)', marginLeft: 6 }}>Insufficient credits.</span>}
             </span>
           </div>
           {!canPost && (
-            <button className="btn btn-p btn-fw" onClick={onGoToCredits} style={{ marginBottom: 10 }}>
-              🪙 Buy Credits
+            <button className="btn btn-p btn-fw" onClick={onGoToCredits} style={{ marginBottom: 10, display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+              <Coins size={16} strokeWidth={1.75} /> Buy Credits
             </button>
           )}
           <button

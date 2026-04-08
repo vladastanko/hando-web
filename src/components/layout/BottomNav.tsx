@@ -1,3 +1,5 @@
+import { Home, ClipboardList, MessageCircle, User } from 'lucide-react';
+
 export type TabKey = 'home' | 'applications' | 'inbox' | 'profile';
 
 interface Props {
@@ -6,11 +8,11 @@ interface Props {
   badges?: Partial<Record<TabKey, number>>;
 }
 
-const items = [
-  { key: 'home'         as TabKey, icon: '⌂',  label: 'Discover'  },
-  { key: 'applications' as TabKey, icon: '📋', label: 'My Jobs'   },
-  { key: 'inbox'        as TabKey, icon: '💬', label: 'Inbox'     },
-  { key: 'profile'      as TabKey, icon: '◎',  label: 'Profile'   },
+const items: { key: TabKey; Icon: typeof Home; label: string }[] = [
+  { key: 'home',         Icon: Home,          label: 'Discover'  },
+  { key: 'applications', Icon: ClipboardList, label: 'My Jobs'   },
+  { key: 'inbox',        Icon: MessageCircle, label: 'Inbox'     },
+  { key: 'profile',      Icon: User,          label: 'Profile'   },
 ];
 
 export function BottomNav({ active, onChange, badges = {} }: Props) {
@@ -18,14 +20,19 @@ export function BottomNav({ active, onChange, badges = {} }: Props) {
     <nav className="bnav">
       {items.map(item => {
         const count = badges[item.key] ?? 0;
+        const isActive = active === item.key;
         return (
           <button
             key={item.key}
-            className={`nb${active === item.key ? ' active' : ''}`}
+            className={`nb${isActive ? ' active' : ''}`}
             onClick={() => onChange(item.key)}
           >
-            <span className="nb-ic" style={{ position: 'relative', display: 'inline-block' }}>
-              {item.icon}
+            <span className="nb-ic" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <item.Icon
+                size={20}
+                strokeWidth={1.75}
+                color={isActive ? 'var(--brand)' : undefined}
+              />
               {count > 0 && (
                 <span style={{
                   position: 'absolute', top: -4, right: -8,

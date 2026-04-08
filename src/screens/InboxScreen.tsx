@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { MessageCircle, Briefcase, ChevronLeft, CheckCheck, Send } from 'lucide-react';
 
 // ── localStorage read-tracking (fallback when RLS blocks UPDATE) ──────
 const LS_KEY = (userId: string) => `handoo_read:${userId}`;
@@ -275,7 +276,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
   if (!chatAvailable) return (
     <div className="pg-n">
       <div className="empty" style={{ paddingTop: 80 }}>
-        <span className="empty-ic">💬</span>
+        <span className="empty-ic"><MessageCircle size={32} strokeWidth={1.5} /></span>
         <span className="empty-t">Chat not enabled</span>
         <span className="empty-s">
           Run <code style={{ background: 'var(--bg-ov)', padding: '2px 6px', borderRadius: 4 }}>
@@ -316,7 +317,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
         {conversations.length === 0 ? (
           <div className="empty" style={{ padding: '40px 16px' }}>
-            <span className="empty-ic">💬</span>
+            <span className="empty-ic"><MessageCircle size={32} strokeWidth={1.5} /></span>
             <span className="empty-t">No messages yet</span>
             <span className="empty-s" style={{ textAlign: 'center', maxWidth: 200 }}>
               Conversations start when an employer accepts your application.
@@ -376,8 +377,8 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
               <button
                 className="btn btn-g btn-ic"
                 onClick={() => setActiveConv(null)}
-                style={{ flexShrink: 0 }}
-              >←</button>
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              ><ChevronLeft size={18} strokeWidth={1.75} /></button>
               <Avatar name={activeConv.other_user_name} url={activeConv.other_user_avatar} size="sm" />
               <div>
                 <div style={{ fontWeight: 800, fontSize: '.9375rem', letterSpacing: '-.01em' }}>
@@ -392,8 +393,8 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
 
           {/* Messages */}
           <div className="chat-msgs">
-            <div className="chat-jctx">
-              💼 <strong>{activeConv.job_title}</strong>
+            <div className="chat-jctx" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Briefcase size={14} strokeWidth={1.75} /> <strong>{activeConv.job_title}</strong>
             </div>
 
             {messages.length === 0 ? (
@@ -401,7 +402,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
                 textAlign: 'center', color: 'var(--tx-3)', fontSize: '.875rem',
                 padding: '32px 0', lineHeight: 1.6,
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: 8, opacity: .4 }}>👋</div>
+                <div style={{ fontSize: '2rem', marginBottom: 8, opacity: .4 }}>Hi!</div>
                 Start the conversation — introduce yourself and confirm the details.
               </div>
             ) : (
@@ -442,7 +443,7 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
                         <div className="msg-tm" style={{ textAlign: isSent ? 'right' : 'left' }}>
                           {timeAgo(msg.created_at)}
                           {isSent && msg.is_read === true && (
-                            <span style={{ marginLeft: 4, color: 'var(--brand)' }}>✓✓</span>
+                            <span style={{ marginLeft: 4, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center' }}><CheckCheck size={13} strokeWidth={1.75} /></span>
                           )}
                         </div>
                       )}
@@ -476,13 +477,13 @@ export default function InboxScreen({ currentUser, onUnreadChange, isActive }: P
                 opacity: !inputText.trim() ? .4 : 1,
               }}
             >
-              {sending ? <span className="spin" style={{ width: 14, height: 14 }} /> : '↑'}
+              {sending ? <span className="spin" style={{ width: 14, height: 14 }} /> : <Send size={16} strokeWidth={1.75} />}
             </button>
           </div>
         </div>
       ) : (
         <div className="chat-empty">
-          <span style={{ fontSize: '2.5rem', opacity: .25 }}>💬</span>
+          <MessageCircle size={40} strokeWidth={1.5} style={{ opacity: .25 }} />
           <span style={{ fontWeight: 700, color: 'var(--tx-2)', fontSize: '1rem' }}>
             Select a conversation
           </span>

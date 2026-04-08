@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Coins, MapPin, ClipboardList, Undo2, Gift, Hourglass, Check, AlertTriangle } from 'lucide-react';
 import type { CreditPackage, CreditTransaction } from '../types';
 import { credits, supabase } from '../lib/supabase';
 import { timeAgo } from '../utils/format';
@@ -13,8 +14,14 @@ interface Props {
 
 const FEATURED_PKG_INDEX = 1;
 
-const TRANSACTION_ICONS: Record<string, string> = {
-  purchase: '🪙', post_job: '📌', apply_job: '📋', refund: '↩', bonus: '🎁',
+const TX_ICON_SIZE = 18;
+const TX_ICON_SW = 1.75;
+const TRANSACTION_ICONS: Record<string, React.ReactNode> = {
+  purchase: <Coins size={TX_ICON_SIZE} strokeWidth={TX_ICON_SW} />,
+  post_job: <MapPin size={TX_ICON_SIZE} strokeWidth={TX_ICON_SW} />,
+  apply_job: <ClipboardList size={TX_ICON_SIZE} strokeWidth={TX_ICON_SW} />,
+  refund: <Undo2 size={TX_ICON_SIZE} strokeWidth={TX_ICON_SW} />,
+  bonus: <Gift size={TX_ICON_SIZE} strokeWidth={TX_ICON_SW} />,
 };
 
 // ── Bank account info — update these! ─────────────────────────
@@ -109,8 +116,8 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
         <div className="cbal-amt">{balance.toLocaleString()}</div>
         <div className="cbal-lb">credits available</div>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)' }}>📌 Post a job <strong>10 credits</strong></div>
-          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)' }}>📋 Apply for a job <strong>3 credits</strong></div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><MapPin size={14} strokeWidth={1.75} /> Post a job <strong>10 credits</strong></div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><ClipboardList size={14} strokeWidth={1.75} /> Apply for a job <strong>3 credits</strong></div>
         </div>
       </div>
 
@@ -132,7 +139,11 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                   </div>
                 </div>
                 <span className={`bdg ${order.status === 'approved' ? 'bdg-ok' : order.status === 'rejected' ? 'bdg-rej' : 'bdg-warn'}`}>
-                  {order.status === 'approved' ? '✓ Approved' : order.status === 'rejected' ? 'Rejected' : '⏳ Pending'}
+                  {order.status === 'approved'
+                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={12} strokeWidth={2} /> Approved</span>
+                    : order.status === 'rejected' ? 'Rejected'
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Hourglass size={12} strokeWidth={1.75} /> Pending</span>
+                  }
                 </span>
               </div>
             ))}
@@ -165,7 +176,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                     width: 22, height: 22, borderRadius: '50%',
                     background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '.75rem', color: '#fff', fontWeight: 800,
-                  }}>✓</div>
+                  }}><Check size={13} strokeWidth={2.5} color="#fff" /></div>
                 )}
                 <div>
                   <div className="pkg-cr">{pkg.credits.toLocaleString()}</div>
@@ -177,7 +188,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                   className={`btn ${isSelected ? 'btn-p' : i === FEATURED_PKG_INDEX ? 'btn-p' : 'btn-s'} btn-fw btn-sm`}
                   onClick={e => { e.stopPropagation(); handleSelectPackage(pkg); }}
                 >
-                  {isSelected ? '✓ Selected' : 'Select'}
+                  {isSelected ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={13} strokeWidth={2} /> Selected</span> : 'Select'}
                 </button>
               </div>
             );
@@ -193,8 +204,8 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
           borderRadius: 'var(--r-lg)', padding: '20px 22px', marginBottom: 20,
           animation: 'fadeIn .2s ease',
         }}>
-          <div style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: 4 }}>
-            📋 Payment Instructions — {selectedPkg.price_rsd.toLocaleString()} RSD
+          <div style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ClipboardList size={18} strokeWidth={1.75} /> Payment Instructions — {selectedPkg.price_rsd.toLocaleString()} RSD
           </div>
           <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 16, lineHeight: 1.55 }}>
             Transfer <strong style={{ color: 'var(--tx)' }}>{selectedPkg.price_rsd.toLocaleString()} RSD</strong> to the account below.
@@ -204,10 +215,10 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
           {/* Bank details */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             {[
-              ['🏦 Bank',       BANK_INFO.bank],
-              ['👤 Name',       BANK_INFO.name],
-              ['💳 Account',    BANK_INFO.account],
-              ['🌐 SWIFT',      BANK_INFO.swift],
+              ['Bank',    BANK_INFO.bank],
+              ['Name',    BANK_INFO.name],
+              ['Account', BANK_INFO.account],
+              ['SWIFT',   BANK_INFO.swift],
             ].map(([label, val]) => (
               <div key={label} style={{
                 padding: '11px 14px', background: 'var(--bg-ov)', borderRadius: 'var(--r)',
@@ -224,8 +235,8 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
             padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1.5px solid rgba(245,158,11,.3)',
             borderRadius: 'var(--r)', marginBottom: 16,
           }}>
-            <div style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
-              ⚠️ Payment Reference (required)
+            <div style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <AlertTriangle size={13} strokeWidth={1.75} /> Payment Reference (required)
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <code style={{
@@ -259,7 +270,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
               onClick={handleSubmitOrder}
               disabled={submitting}
             >
-              {submitting ? 'Submitting...' : "✓ I've initiated the transfer"}
+              {submitting ? 'Submitting...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={16} strokeWidth={2} /> I've initiated the transfer</span>}
             </button>
           </div>
         </div>
@@ -305,7 +316,7 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '1rem', flexShrink: 0,
                   }}>
-                    {TRANSACTION_ICONS[tx.type] ?? '🪙'}
+                    {TRANSACTION_ICONS[tx.type] ?? <Coins size={18} strokeWidth={1.75} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{tx.description}</div>

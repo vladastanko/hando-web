@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Search, MapPin, RefreshCw, SlidersHorizontal, List, Map, Columns2, Grid3x3 } from 'lucide-react';
 import type { Job, Category, Profile } from '../types';
 import { JobCard } from '../components/jobs/JobCard';
 import { JobDetailModal } from '../components/jobs/JobDetailModal';
@@ -33,7 +34,7 @@ export default function HomeScreen({
   const [showFilters, setShowFilters] = useState(false);
 
   const allCats = useMemo(() => [
-    { id: '', name: 'All', icon: '✦', color: '#5b5ef4' },
+    { id: '', name: 'All', icon: null as null, color: '#5b5ef4' },
     ...categories,
   ], [categories]);
 
@@ -95,7 +96,7 @@ export default function HomeScreen({
         {/* ── Search + controls row ───────────────────────── */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-            <span className="srch-ic">🔍</span>
+            <span className="srch-ic"><Search size={16} strokeWidth={1.75} /></span>
             <input
               className="srch-inp"
               placeholder="Search jobs, cities, categories..."
@@ -113,7 +114,7 @@ export default function HomeScreen({
           >
             {locationLoading
               ? <span className="spin" style={{ width: 14, height: 14 }} />
-              : <span>{userLocation ? '📍' : '📍?'}</span>
+              : <MapPin size={16} strokeWidth={1.75} color={userLocation ? 'var(--ok)' : undefined} />
             }
           </button>
 
@@ -124,21 +125,22 @@ export default function HomeScreen({
             title="Refresh"
             style={{ flexShrink: 0 }}
           >
-            {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : '↻'}
+            {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <RefreshCw size={16} strokeWidth={1.75} />}
           </button>
 
           <button
             className={`btn btn-sm ${activeFiltersCount > 0 ? 'btn-p' : 'btn-s'}`}
             onClick={() => setShowFilters(v => !v)}
-            style={{ flexShrink: 0 }}
+            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5 }}
           >
-            ⚙ {activeFiltersCount > 0 ? `Filters (${activeFiltersCount})` : 'Filters'}
+            <SlidersHorizontal size={16} strokeWidth={1.75} />
+            {activeFiltersCount > 0 ? `Filters (${activeFiltersCount})` : 'Filters'}
           </button>
 
           <div className="vs">
-            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')}>☰ List</button>
-            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')}>⊕ Map</button>
-            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')}>⊟ Split</button>
+            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><List size={14} strokeWidth={1.75} /> List</button>
+            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Map size={14} strokeWidth={1.75} /> Map</button>
+            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Columns2 size={14} strokeWidth={1.75} /> Split</button>
           </div>
         </div>
 
@@ -150,7 +152,10 @@ export default function HomeScreen({
               className={`cpill${filters.categoryId === cat.id ? ' on' : ''}`}
               onClick={() => setFilters(f => ({ ...f, categoryId: f.categoryId === cat.id ? '' : cat.id }))}
             >
-              <span>{cat.icon}</span>
+              {cat.icon === null
+                ? <Grid3x3 size={14} strokeWidth={1.75} />
+                : <span>{cat.icon}</span>
+              }
               <span>{cat.name}</span>
             </button>
           ))}
@@ -168,7 +173,7 @@ export default function HomeScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="sec-ttl">{filtered.length} job{filtered.length !== 1 ? 's' : ''}</span>
             {userLocation
-              ? <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600 }}>📍 near you</span>
+              ? <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={13} strokeWidth={1.75} /> near you</span>
               : <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)' }}>• enable location for distance</span>
             }
             {activeFiltersCount > 0 && (
@@ -178,8 +183,8 @@ export default function HomeScreen({
             )}
           </div>
           {!userLocation && (
-            <button className="btn btn-s btn-sm" onClick={onRequestLocation} disabled={locationLoading}>
-              {locationLoading ? '...' : '📍 Enable location'}
+            <button className="btn btn-s btn-sm" onClick={onRequestLocation} disabled={locationLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              {locationLoading ? '...' : <><MapPin size={14} strokeWidth={1.75} /> Enable location</>}
             </button>
           )}
         </div>
@@ -207,7 +212,7 @@ export default function HomeScreen({
             </div>
           ) : filtered.length === 0 ? (
             <div className="empty">
-              <span className="empty-ic">🔍</span>
+              <span className="empty-ic"><Search size={32} strokeWidth={1.5} /></span>
               <span className="empty-t">No jobs found</span>
               <span className="empty-s">
                 {activeFiltersCount > 0
@@ -255,7 +260,7 @@ export default function HomeScreen({
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="empty">
-                  <span className="empty-ic">🔍</span>
+                  <span className="empty-ic"><Search size={32} strokeWidth={1.5} /></span>
                   <span className="empty-t">No jobs found</span>
                   <span className="empty-s">
                     {activeFiltersCount > 0 ? 'Try removing some filters.' : 'No open jobs nearby.'}

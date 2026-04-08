@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { MapPin, Banknote, Calendar, Users, Check, X, MessageCircle, Flag, Star, AlertTriangle, Clock, Hourglass, ClipboardList, User, ChevronLeft } from 'lucide-react';
 import type { Job, Application } from '../types';
 import { jobs, applications, ratings, supabase } from '../lib/supabase';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -26,18 +27,18 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 // ── Multi-segment rating categories ─────────────────────────
-interface CategoryScore { key: string; label: string; icon: string; }
+interface CategoryScore { key: string; label: string; }
 const WORKER_CATEGORIES: CategoryScore[] = [
-  { key: 'score_punctuality',    label: 'Punctuality',    icon: '⏰' },
-  { key: 'score_quality',        label: 'Work quality',   icon: '🔧' },
-  { key: 'score_communication',  label: 'Communication',  icon: '💬' },
-  { key: 'score_reliability',    label: 'Reliability',    icon: '🤝' },
+  { key: 'score_punctuality',    label: 'Punctuality'   },
+  { key: 'score_quality',        label: 'Work quality'  },
+  { key: 'score_communication',  label: 'Communication' },
+  { key: 'score_reliability',    label: 'Reliability'   },
 ];
 const POSTER_CATEGORIES: CategoryScore[] = [
-  { key: 'score_payment',       label: 'Payment',         icon: '💰' },
-  { key: 'score_clarity',       label: 'Instructions',    icon: '📋' },
-  { key: 'score_communication', label: 'Communication',   icon: '💬' },
-  { key: 'score_reliability',   label: 'Reliability',     icon: '🤝' },
+  { key: 'score_payment',       label: 'Payment'        },
+  { key: 'score_clarity',       label: 'Instructions'   },
+  { key: 'score_communication', label: 'Communication'  },
+  { key: 'score_reliability',   label: 'Reliability'    },
 ];
 
 function avgScores(scores: Record<string, number>): number {
@@ -328,7 +329,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
         <div>
           {myApps.length === 0 ? (
             <div className="empty" style={{ marginTop: 48 }}>
-              <span className="empty-ic">📋</span>
+              <span className="empty-ic"><ClipboardList size={32} strokeWidth={1.5} /></span>
               <span className="empty-t">No applications yet</span>
               <span className="empty-s">Browse Discover to find jobs and apply.</span>
             </div>
@@ -353,9 +354,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                             {app.job?.title ?? 'Job'}
                           </div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                            {app.job?.city && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>📍 {app.job.city}</span>}
-                            {app.job?.pay_per_worker && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>💰 {app.job.pay_per_worker.toLocaleString()} RSD</span>}
-                            {app.job?.scheduled_date && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>🗓 {formatDate(app.job.scheduled_date)}</span>}
+                            {app.job?.city && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={12} strokeWidth={1.75} />{app.job.city}</span>}
+                            {app.job?.pay_per_worker && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Banknote size={12} strokeWidth={1.75} />{app.job.pay_per_worker.toLocaleString()} RSD</span>}
+                            {app.job?.scheduled_date && <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={12} strokeWidth={1.75} />{formatDate(app.job.scheduled_date)}</span>}
                           </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -378,22 +379,22 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
                       {app.status === 'accepted' && !isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
-                          <span>✅</span>
+                          <Check size={16} strokeWidth={1.75} />
                           <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--ok)', flex: 1 }}>Accepted — check your inbox.</span>
-                          <button className="btn btn-s btn-sm" onClick={onOpenChat} style={{ flexShrink: 0 }}>
-                            💬 Chat
+                          <button className="btn btn-s btn-sm" onClick={onOpenChat} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <MessageCircle size={14} strokeWidth={1.75} /> Chat
                           </button>
                         </div>
                       )}
                       {app.status === 'rejected' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(239,68,68,.07)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 'var(--r)', marginBottom: 12 }}>
-                          <span>❌</span>
+                          <X size={16} strokeWidth={1.75} />
                           <span style={{ fontSize: '.875rem', color: '#ef4444' }}>Your application was not selected for this job.</span>
                         </div>
                       )}
                       {isCompleted && app.status === 'accepted' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(91,94,244,.08)', border: '1px solid rgba(91,94,244,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
-                          <span>🏁</span>
+                          <Flag size={16} strokeWidth={1.75} />
                           <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--brand)' }}>Job completed! Leave a rating for the employer.</span>
                         </div>
                       )}
@@ -407,12 +408,12 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                           </button>
                         )}
                         {canRate && (
-                          <button className="btn btn-p btn-sm" onClick={() => openRate(app, 'poster')}>
-                            ⭐ Rate Employer
+                          <button className="btn btn-p btn-sm" onClick={() => openRate(app, 'poster')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <Star size={14} strokeWidth={1.75} /> Rate Employer
                           </button>
                         )}
                         {ratedIds.has(app.id) && (
-                          <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600 }}>✓ Rated</span>
+                          <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={13} strokeWidth={2} /> Rated</span>
                         )}
                       </div>
                     </div>
@@ -448,7 +449,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
             {postedFiltered.length === 0 ? (
               <div className="empty" style={{ marginTop: 32 }}>
-                <span className="empty-ic">📌</span>
+                <span className="empty-ic"><MapPin size={32} strokeWidth={1.5} /></span>
                 <span className="empty-t">No {postedTab.replace('_', ' ')} jobs</span>
               </div>
             ) : (
@@ -474,15 +475,15 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         <StatusBadge status={job.status} />
                       </div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>📍 {job.city}</span>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>💰 {job.pay_per_worker.toLocaleString()} RSD</span>
-                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)' }}>🗓 {formatDate(job.scheduled_date)}</span>
+                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={11} strokeWidth={1.75} />{job.city}</span>
+                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Banknote size={11} strokeWidth={1.75} />{job.pay_per_worker.toLocaleString()} RSD</span>
+                        <span style={{ fontSize: '.75rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} strokeWidth={1.75} />{formatDate(job.scheduled_date)}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: 10 }}>
                           {/* FIX: show real accepted count */}
-                          <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>
-                            👥 {accepted}/{job.crew_size} accepted
+                          <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Users size={11} strokeWidth={1.75} />{accepted}/{job.crew_size} accepted
                           </span>
                           {spots > 0 && job.status === 'open' && (
                             <span style={{ fontSize: '.75rem', color: 'var(--warn)', fontWeight: 600 }}>{spots} spot{spots > 1 ? 's' : ''} open</span>
@@ -514,10 +515,10 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: '1.0625rem', letterSpacing: '-.02em', marginBottom: 4 }}>{panelJob.title}</div>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>📍 {panelJob.city}</span>
-                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>💰 {panelJob.pay_per_worker.toLocaleString()} RSD/worker</span>
-                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>🗓 {formatDatetime(panelJob.scheduled_date)}</span>
-                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>⏱ {panelJob.duration_hours}h</span>
+                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={13} strokeWidth={1.75} />{panelJob.city}</span>
+                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Banknote size={13} strokeWidth={1.75} />{panelJob.pay_per_worker.toLocaleString()} RSD/worker</span>
+                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={13} strokeWidth={1.75} />{formatDatetime(panelJob.scheduled_date)}</span>
+                    <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Clock size={13} strokeWidth={1.75} />{panelJob.duration_hours}h</span>
                   </div>
                   {/* FIX: Stats use live acceptedCount */}
                   <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
@@ -535,14 +536,14 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <button className="btn btn-g btn-sm" onClick={() => { setPanelJob(null); setSelectedApp(null); }}>✕</button>
+                  <button className="btn btn-g btn-sm" onClick={() => { setPanelJob(null); setSelectedApp(null); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} strokeWidth={1.75} /></button>
                   {(panelJob.status === 'open' || panelJob.status === 'in_progress') && (
-                    <button className="btn btn-s btn-sm" onClick={() => openEdit(panelJob)}>✏️ Edit</button>
+                    <button className="btn btn-s btn-sm" onClick={() => openEdit(panelJob)}>Edit</button>
                   )}
                   {/* FIX: Complete button available for in_progress jobs */}
                   {panelJob.status === 'in_progress' && (
-                    <button className="btn btn-ok btn-sm" onClick={() => setCompleteTarget(panelJob.id)}>
-                      ✓ Complete
+                    <button className="btn btn-ok btn-sm" onClick={() => setCompleteTarget(panelJob.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Check size={14} strokeWidth={1.75} /> Complete
                     </button>
                   )}
                 </div>
@@ -564,7 +565,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                         cursor: 'pointer', transition: 'all var(--tf)',
                       }}
                     >
-                      {s === 'newest' ? 'Newest' : s === 'rating' ? '⭐ Rating' : '✓ Jobs done'}
+                      {s === 'newest' ? 'Newest' : s === 'rating' ? 'Rating' : 'Jobs done'}
                     </button>
                   ))}
                 </div>
@@ -575,7 +576,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                 <div className="loading" style={{ padding: '40px 0' }}><span className="spin" />Loading applicants...</div>
               ) : applicants.length === 0 ? (
                 <div className="empty" style={{ padding: '48px 0' }}>
-                  <span className="empty-ic">👤</span>
+                  <span className="empty-ic"><User size={32} strokeWidth={1.5} /></span>
                   <span className="empty-t">No applications yet</span>
                   <span className="empty-s">Share your job to attract workers.</span>
                 </div>
@@ -635,14 +636,14 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                             {selectedApp.worker?.full_name ?? 'Worker'}
                           </div>
                           {selectedApp.worker?.city && (
-                            <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4 }}>📍 {selectedApp.worker.city}</div>
+                            <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} strokeWidth={1.75} />{selectedApp.worker.city}</div>
                           )}
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {selectedApp.worker?.verification_status === 'verified' && (
-                              <span className="bdg bdg-verif">✓ Verified</span>
+                              <span className="bdg bdg-verif"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Verified</span>
                             )}
                             {selectedApp.worker?.is_phone_verified && (
-                              <span className="bdg bdg-ok">📱 Phone</span>
+                              <span className="bdg bdg-ok"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Phone</span>
                             )}
                           </div>
                         </div>
@@ -654,14 +655,14 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-                        {[
-                          { icon: '⭐', label: 'Rating', val: selectedApp.worker?.rating_as_worker ? selectedApp.worker.rating_as_worker.toFixed(1) : '—' },
-                          { icon: '✓', label: 'Jobs done', val: selectedApp.worker?.completed_jobs_worker ?? 0 },
-                          { icon: '📋', label: 'Jobs posted', val: selectedApp.worker?.completed_jobs_poster ?? 0 },
-                        ].map(s => (
+                        {([
+                          { icon: <Star size={12} strokeWidth={1.75} />, label: 'Rating', val: selectedApp.worker?.rating_as_worker ? selectedApp.worker.rating_as_worker.toFixed(1) : '—' },
+                          { icon: <Check size={12} strokeWidth={1.75} />, label: 'Jobs done', val: selectedApp.worker?.completed_jobs_worker ?? 0 },
+                          { icon: <ClipboardList size={12} strokeWidth={1.75} />, label: 'Jobs posted', val: selectedApp.worker?.completed_jobs_poster ?? 0 },
+                        ] as { icon: React.ReactNode; label: string; val: string | number }[]).map(s => (
                           <div key={s.label} style={{ padding: '10px 12px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', textAlign: 'center' }}>
                             <div style={{ fontSize: '1.125rem', fontWeight: 800 }}>{s.val}</div>
-                            <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', textTransform: 'uppercase', letterSpacing: '.03em', marginTop: 2 }}>{s.icon} {s.label}</div>
+                            <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', textTransform: 'uppercase', letterSpacing: '.03em', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 3 }}>{s.icon} {s.label}</div>
                           </div>
                         ))}
                       </div>
@@ -693,7 +694,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                             onClick={() => handleAccept(selectedApp.id, selectedApp.job_id)}
                             disabled={actionLoading === selectedApp.id}
                           >
-                            {actionLoading === selectedApp.id ? 'Accepting...' : '✓ Accept applicant'}
+                            {actionLoading === selectedApp.id ? 'Accepting...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Check size={14} strokeWidth={2} /> Accept applicant</span>}
                           </button>
                           <button
                             className="btn btn-d"
@@ -707,34 +708,34 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status !== 'completed' && (
                         <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
-                          <div style={{ padding: '10px 13px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--ok)', fontWeight: 600 }}>
-                            ✅ Accepted — conversation started in Inbox
+                          <div style={{ padding: '10px 13px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--ok)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Check size={16} strokeWidth={1.75} /> Accepted — conversation started in Inbox
                           </div>
-                          <button className="btn btn-s btn-fw" onClick={onOpenChat}>
-                            💬 Open Chat
+                          <button className="btn btn-s btn-fw" onClick={onOpenChat} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                            <MessageCircle size={14} strokeWidth={1.75} /> Open Chat
                           </button>
                           {/* FIX: mark complete also accessible from worker detail */}
                           {panelJob.status === 'in_progress' && (
-                            <button className="btn btn-ok btn-fw" onClick={() => setCompleteTarget(panelJob.id)}>
-                              🏁 Mark job as completed
+                            <button className="btn btn-ok btn-fw" onClick={() => setCompleteTarget(panelJob.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                              <Flag size={14} strokeWidth={1.75} /> Mark job as completed
                             </button>
                           )}
                         </div>
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status === 'completed' && !ratedIds.has(selectedApp.id) && (
-                        <button className="btn btn-p btn-fw" onClick={() => openRate(selectedApp, 'worker')}>
-                          ⭐ Rate this worker
+                        <button className="btn btn-p btn-fw" onClick={() => openRate(selectedApp, 'worker')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                          <Star size={14} strokeWidth={1.75} /> Rate this worker
                         </button>
                       )}
                       {ratedIds.has(selectedApp.id) && (
-                        <div style={{ padding: '10px 13px', background: 'var(--brand-s)', border: '1px solid rgba(91,94,244,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--brand)', fontWeight: 600 }}>
-                          ✓ You rated this worker
+                        <div style={{ padding: '10px 13px', background: 'var(--brand-s)', border: '1px solid rgba(91,94,244,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--brand)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Check size={14} strokeWidth={1.75} /> You rated this worker
                         </div>
                       )}
                     </div>
                   ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--tx-3)', padding: 24 }}>
-                      <span style={{ fontSize: '2rem', opacity: .4 }}>👤</span>
+                      <User size={32} strokeWidth={1.5} style={{ opacity: .4 }} />
                       <span style={{ fontSize: '.875rem' }}>Select an applicant to review</span>
                     </div>
                   )}
@@ -749,7 +750,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       <Modal open={!!withdrawTarget} onClose={() => setWithdrawTarget(null)} title="Withdraw application?" center>
         <div style={{ padding: '4px 0 16px' }}>
           <div style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
-            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+            <AlertTriangle size={20} strokeWidth={1.75} />
             <div>
               <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4 }}>Are you sure?</div>
               <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.6 }}>
@@ -766,7 +767,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           >
             {actionLoading === withdrawTarget ? 'Withdrawing...' : 'Confirm withdraw'}
           </button>
-          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)}>← Go back</button>
+          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><ChevronLeft size={16} strokeWidth={1.75} /> Go back</button>
         </div>
       </Modal>
 
@@ -774,7 +775,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       <Modal open={!!completeTarget} onClose={() => setCompleteTarget(null)} title="Završi posao?" center>
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', gap: 12, padding: '14px', background: 'rgba(34,197,94,.07)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', marginBottom: 14 }}>
-            <span style={{ fontSize: '1.5rem' }}>🏁</span>
+            <Flag size={24} strokeWidth={1.75} />
             <div>
               <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4, color: 'var(--ok)' }}>Posao će biti zatvoren</div>
               <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.6 }}>
@@ -790,7 +791,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             onClick={() => completeTarget && handleMarkComplete(completeTarget)}
             disabled={actionLoading === completeTarget}
           >
-            {actionLoading === completeTarget ? '⏳ Završavam...' : '🏁 Potvrdi završetak posla'}
+            {actionLoading === completeTarget ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Hourglass size={14} strokeWidth={1.75} /> Završavam...</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Flag size={14} strokeWidth={1.75} /> Potvrdi završetak posla</span>}
           </button>
           <button className="btn btn-s btn-fw" onClick={() => setCompleteTarget(null)}>Otkaži</button>
         </div>
@@ -799,7 +800,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       {/* ── Post-complete: rate prompt ───────────────────── */}
       <Modal open={!!showRatePrompt} onClose={() => setShowRatePrompt(null)} title="Oceni radnike" center>
         <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>⭐</div>
+          <div style={{ fontSize: '2.5rem', marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Star size={40} strokeWidth={1.5} color="#f59e0b" /></div>
           <div style={{ fontWeight: 800, fontSize: '1.0625rem', marginBottom: 8 }}>Posao je završen!</div>
           <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.6, marginBottom: 20 }}>
             Radnici su dobili obaveštenje. Sada možeš da oceniš svakog radnika — ocene su javne i pomažu zajednici.
@@ -812,8 +813,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   key={app.id}
                   className="btn btn-p btn-fw"
                   onClick={() => { setShowRatePrompt(null); openRate(app, 'worker'); }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
                 >
-                  ⭐ Oceni {app.worker?.full_name ?? 'radnika'}
+                  <Star size={14} strokeWidth={1.75} /> Oceni {app.worker?.full_name ?? 'radnika'}
                 </button>
               ))
             }
@@ -827,7 +829,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       {/* ── Edit description modal ───────────────────────── */}
       <Modal open={!!editJob} onClose={() => setEditJob(null)} title={`Edit: "${editJob?.title ?? ''}"`}>
         <div className="info-box warn" style={{ marginBottom: 14 }}>
-          <span>ℹ️</span>
+          <AlertTriangle size={15} strokeWidth={1.75} />
           <span>Only the description can be changed. Pay, crew size and date are locked after posting.</span>
         </div>
         <div className="fld">
@@ -857,7 +859,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             {rateCategories.map(cat => (
               <div key={cat.key}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{cat.icon} {cat.label}</span>
+                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{cat.label}</span>
                   <span style={{ fontSize: '.875rem', fontWeight: 800, color: 'var(--brand)' }}>
                     {rateScores[cat.key] ?? 5}/5
                   </span>
@@ -887,8 +889,8 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             alignItems: 'center', marginBottom: 18,
           }}>
             <span style={{ fontSize: '.875rem', color: 'var(--tx-2)' }}>Overall rating</span>
-            <span style={{ fontWeight: 800, fontSize: '1.0625rem', color: 'var(--brand)' }}>
-              ⭐ {avgScores(rateScores).toFixed(1)}
+            <span style={{ fontWeight: 800, fontSize: '1.0625rem', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <Star size={16} strokeWidth={1.75} /> {avgScores(rateScores).toFixed(1)}
             </span>
           </div>
 
@@ -922,7 +924,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
           <button className="btn btn-p btn-fw btn-lg" onClick={submitRating} disabled={rateSubmitting}>
-            {rateSubmitting ? '⏳ Slanje...' : '⭐ Pošalji ocenu'}
+            {rateSubmitting ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Hourglass size={14} strokeWidth={1.75} /> Slanje...</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Star size={14} strokeWidth={1.75} /> Pošalji ocenu</span>}
           </button>
           <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>Otkaži</button>
         </div>

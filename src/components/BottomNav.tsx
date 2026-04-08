@@ -1,3 +1,5 @@
+import { Home, Plus, Briefcase, User } from 'lucide-react';
+
 type TabKey = 'home' | 'post' | 'my-jobs' | 'profile';
 
 type Props = {
@@ -5,11 +7,11 @@ type Props = {
   onChange: (tab: TabKey) => void;
 };
 
-const items: Array<{ key: TabKey; label: string; icon: string }> = [
-  { key: 'home', label: 'Home', icon: '⌂' },
-  { key: 'post', label: 'Post', icon: '+' },
-  { key: 'my-jobs', label: 'Jobs', icon: '◫' },
-  { key: 'profile', label: 'Profile', icon: '◉' },
+const items: Array<{ key: TabKey; label: string; Icon: typeof Home }> = [
+  { key: 'home',    label: 'Home',    Icon: Home },
+  { key: 'post',    label: 'Post',    Icon: Plus },
+  { key: 'my-jobs', label: 'Jobs',    Icon: Briefcase },
+  { key: 'profile', label: 'Profile', Icon: User },
 ];
 
 export default function BottomNav({ activeTab, onChange }: Props) {
@@ -21,7 +23,7 @@ export default function BottomNav({ activeTab, onChange }: Props) {
           className={activeTab === item.key ? 'active' : ''}
           onClick={() => onChange(item.key)}
         >
-          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-icon"><item.Icon size={20} strokeWidth={1.75} /></span>
           <span>{item.label}</span>
         </button>
       ))}

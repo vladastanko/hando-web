@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Lock, Star, Map, Banknote, Info, ChevronLeft } from 'lucide-react';
 import { auth } from '../lib/supabase';
 
 type Mode = 'login' | 'signup' | 'forgot';
@@ -132,11 +133,11 @@ export default function AuthScreen({ onSuccess }: Props) {
           </p>
           <div className="auth-trust">
             {([
-              ['🔒', 'Verified profiles — real ID and email confirmation'],
-              ['⭐', 'Transparent ratings from completed real jobs'],
-              ['🗺', 'Map-based matching in your neighbourhood'],
-              ['💰', 'Fair pay, agreed directly between people'],
-            ] as [string, string][]).map(([icon, text]) => (
+              [<Lock size={16} strokeWidth={1.75} />,    'Verified profiles — real ID and email confirmation'],
+              [<Star size={16} strokeWidth={1.75} />,    'Transparent ratings from completed real jobs'],
+              [<Map size={16} strokeWidth={1.75} />,     'Map-based matching in your neighbourhood'],
+              [<Banknote size={16} strokeWidth={1.75} />, 'Fair pay, agreed directly between people'],
+            ] as [React.ReactNode, string][]).map(([icon, text]) => (
               <div key={text} className="auth-ti">
                 <div className="auth-tic">{icon}</div>
                 <span>{text}</span>
@@ -161,7 +162,7 @@ export default function AuthScreen({ onSuccess }: Props) {
               <button className="btn btn-p btn-fw btn-lg" onClick={handleForgot} disabled={loading}>
                 {loading ? 'Sending...' : 'Send reset link'}
               </button>
-              <button className="btn btn-g btn-fw" onClick={() => { setMode('login'); clear(); }}>← Back to sign in</button>
+              <button className="btn btn-g btn-fw" onClick={() => { setMode('login'); clear(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><ChevronLeft size={16} strokeWidth={1.75} /> Back to sign in</button>
             </div>
           ) : (
             <>
@@ -197,7 +198,7 @@ export default function AuthScreen({ onSuccess }: Props) {
 
                 {mode === 'signup' && (
                   <div className="info-box brand" style={{ fontSize: '.8125rem' }}>
-                    <span style={{ flexShrink: 0 }}>ℹ️</span>
+                    <Info size={16} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                     <span>After registering, you'll receive a <strong>verification email</strong>. Click the link to activate your account before signing in.</span>
                   </div>
                 )}

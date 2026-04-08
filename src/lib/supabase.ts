@@ -91,11 +91,16 @@ export const profiles = {
     if (error || !data) return { data, error: error?.message ?? null };
 
     // Compute live stats from actual records (in case DB triggers are missing)
-    const [ratingsRes, jobsWorkedRes, jobsPostedRes, earningsRes] = await Promise.all([
-      // Ratings received as worker
+    const [ratingsRes, ratingsAsPosterRes, jobsWorkedRes, jobsPostedRes, earningsRes] = await Promise.all([
+      // Ratings received as worker (rated by poster)
       supabase.from('ratings').select('score').eq('ratee_id', userId).eq('rater_role', 'poster'),
-      // Jobs completed as worker
-      supabase.from('applications').select('id').eq('worker_id', userId).eq('status', 'accepted'),
+      // Ratings received as poster (rated by worker)
+      supabase.from('ratings').select('score').eq('ratee_id', userId).eq('rater_role', 'worker'),
+      // Jobs completed as worker (only count applications where the underlying job is completed)
+      supabase.from('applications')
+        .select('id, job:jobs!inner(status)')
+        .eq('worker_id', userId)
+        .eq('status', 'accepted'),
       // Jobs posted as employer
       supabase.from('jobs').select('id').eq('poster_id', userId).eq('status', 'completed'),
       // Total earnings: sum of pay_per_worker for accepted applications on completed jobs
@@ -107,12 +112,22 @@ export const profiles = {
 
     const ratings = (ratingsRes.data ?? []) as { score: number }[];
     const computedRating = ratings.length > 0
-      ? ratings.reduce((s, r) => s + r.score, 0) / ratings.length
-      : data.rating_as_worker;
+      ? Math.round((ratings.reduce((s, r) => s + r.score, 0) / ratings.length) * 10) / 10
+      : (data.rating_as_worker ?? 0);
     const computedRatingCount = ratings.length > 0 ? ratings.length : data.total_ratings_worker;
-    const completedWorker = (jobsWorkedRes.data?.length ?? 0) > 0
-      ? jobsWorkedRes.data!.length
-      : data.completed_jobs_worker;
+
+    const ratingsAsPoster = (ratingsAsPosterRes.data ?? []) as { score: number }[];
+    const computedRatingAsPoster = ratingsAsPoster.length > 0
+      ? Math.round((ratingsAsPoster.reduce((s, r) => s + r.score, 0) / ratingsAsPoster.length) * 10) / 10
+      : (data.rating_as_poster ?? 0);
+
+    const completedWorker = (() => {
+      const completedFromLive = (jobsWorkedRes.data ?? []).filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (a: any) => Array.isArray(a.job) ? a.job[0]?.status === 'completed' : a.job?.status === 'completed'
+      ).length;
+      return completedFromLive > 0 ? completedFromLive : data.completed_jobs_worker;
+    })();
     const completedPoster = (jobsPostedRes.data?.length ?? 0) > 0
       ? jobsPostedRes.data!.length
       : data.completed_jobs_poster;
@@ -124,6 +139,7 @@ export const profiles = {
     const enriched = {
       ...data,
       rating_as_worker: computedRating,
+      rating_as_poster: computedRatingAsPoster,
       total_ratings_worker: computedRatingCount,
       completed_jobs_worker: completedWorker,
       completed_jobs_poster: completedPoster,

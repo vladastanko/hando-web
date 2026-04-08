@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lock, Coins, Hourglass, Check, X, RefreshCw, ChevronLeft, PartyPopper, ClipboardList, Banknote, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { timeAgo } from '../utils/format';
 
@@ -136,7 +137,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
           borderRadius: 'var(--r-xl)', padding: 32,
         }}>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔐</div>
+            <div style={{ fontSize: '2rem', marginBottom: 8, display: 'flex', justifyContent: 'center' }}><Lock size={36} strokeWidth={1.75} /></div>
             <div style={{ fontWeight: 800, fontSize: '1.25rem' }}>Handoo Admin</div>
             <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginTop: 4 }}>Credit order management</div>
           </div>
@@ -151,7 +152,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
             {pwError && <div style={{ fontSize: '.8125rem', color: 'var(--err)', marginTop: 4 }}>{pwError}</div>}
           </div>
           <button className="btn btn-p btn-fw btn-lg" onClick={handleLogin}>Sign in</button>
-          <button className="btn btn-g btn-fw" style={{ marginTop: 8 }} onClick={onExit}>← Back to app</button>
+          <button className="btn btn-g btn-fw" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }} onClick={onExit}><ChevronLeft size={16} strokeWidth={1.75} /> Back to app</button>
           <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--bg-ov)', borderRadius: 'var(--r)', fontSize: '.75rem', color: 'var(--tx-3)' }}>
             Set <code>VITE_ADMIN_PASSWORD</code> in .env.local to change the default password.
           </div>
@@ -168,33 +169,33 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', margin: 0 }}>
-              🪙 Credit Orders
+            <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Coins size={22} strokeWidth={1.75} /> Credit Orders
             </h1>
             <p style={{ margin: '4px 0 0', color: 'var(--tx-2)', fontSize: '.875rem' }}>
               Approve bank transfers to add credits to user accounts
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-s btn-sm" onClick={load} disabled={loading}>
-              {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : '↻ Refresh'}
+            <button className="btn btn-s btn-sm" onClick={load} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <><RefreshCw size={14} strokeWidth={1.75} /> Refresh</>}
             </button>
-            <button className="btn btn-g btn-sm" onClick={onExit}>← App</button>
+            <button className="btn btn-g btn-sm" onClick={onExit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><ChevronLeft size={14} strokeWidth={1.75} /> App</button>
           </div>
         </div>
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-          {[
-            { label: 'Pending orders', val: stats.pending, color: 'var(--warn)', icon: '⏳' },
-            { label: 'Approved today', val: stats.approved_today, color: 'var(--ok)', icon: '✅' },
-            { label: 'RSD today', val: `${stats.total_rsd_today.toLocaleString()} RSD`, color: 'var(--brand)', icon: '💰' },
-          ].map(s => (
+          {([
+            { label: 'Pending orders', val: stats.pending, color: 'var(--warn)', icon: <Hourglass size={14} strokeWidth={1.75} /> },
+            { label: 'Approved today', val: stats.approved_today, color: 'var(--ok)', icon: <Check size={14} strokeWidth={1.75} /> },
+            { label: 'RSD today', val: `${stats.total_rsd_today.toLocaleString()} RSD`, color: 'var(--brand)', icon: <Banknote size={14} strokeWidth={1.75} /> },
+          ] as { label: string; val: string | number; color: string; icon: React.ReactNode }[]).map(s => (
             <div key={s.label} style={{
               background: 'var(--bg-el)', border: '1.5px solid var(--border)',
               borderRadius: 'var(--r-lg)', padding: '16px 20px',
             }}>
-              <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
+              <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                 {s.icon} {s.label}
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color }}>{s.val}</div>
@@ -212,7 +213,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             {feedback}
-            <button onClick={() => setFeedback('')} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'inherit', fontSize: '1rem' }}>✕</button>
+            <button onClick={() => setFeedback('')} style={{ background: 'none', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex', alignItems: 'center' }}><X size={16} strokeWidth={1.75} /></button>
           </div>
         )}
 
@@ -229,7 +230,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
 
         {/* SQL hint */}
         <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--bg-el)', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: '.75rem', color: 'var(--tx-3)' }}>
-          💡 You can also approve via SQL: <code style={{ color: 'var(--tx-2)' }}>SELECT approve_credit_order('ORDER_ID');</code>
+          <Info size={14} strokeWidth={1.75} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> You can also approve via SQL: <code style={{ color: 'var(--tx-2)' }}>SELECT approve_credit_order('ORDER_ID');</code>
         </div>
 
         {/* Orders list */}
@@ -237,7 +238,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
           <div className="loading"><span className="spin" />Loading orders...</div>
         ) : visible.length === 0 ? (
           <div className="empty">
-            <span className="empty-ic">{tab === 'pending' ? '🎉' : '📋'}</span>
+            <span className="empty-ic">{tab === 'pending' ? <PartyPopper size={32} strokeWidth={1.5} /> : <ClipboardList size={32} strokeWidth={1.5} />}</span>
             <span className="empty-t">{tab === 'pending' ? 'No pending orders!' : 'No orders yet'}</span>
             <span className="empty-s">{tab === 'pending' ? 'All transfers have been processed.' : 'Orders will appear here when users initiate bank transfers.'}</span>
           </div>
@@ -297,7 +298,11 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
                   {/* Actions */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
                     <span className={`bdg ${order.status === 'approved' ? 'bdg-ok' : order.status === 'rejected' ? 'bdg-rej' : 'bdg-warn'}`}>
-                      {order.status === 'approved' ? '✓ Approved' : order.status === 'rejected' ? 'Rejected' : '⏳ Pending'}
+                      {order.status === 'approved'
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} strokeWidth={2} /> Approved</span>
+                        : order.status === 'rejected' ? 'Rejected'
+                        : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Hourglass size={11} strokeWidth={1.75} /> Pending</span>
+                      }
                     </span>
 
                     {order.status === 'pending' && (
@@ -314,7 +319,7 @@ export default function AdminScreen({ onExit }: { onExit: () => void }) {
                           onClick={() => handleApprove(order)}
                           disabled={actionId === order.id}
                         >
-                          {actionId === order.id ? '...' : '✓ Approve'}
+                          {actionId === order.id ? '...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={14} strokeWidth={2} /> Approve</span>}
                         </button>
                       </div>
                     )}

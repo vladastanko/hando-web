@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Calendar, Clock, Banknote, Users, Check, AlertTriangle, Coins } from 'lucide-react';
 import type { Job, Profile } from '../../types';
 import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/StatusBadge';
@@ -80,15 +81,15 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              ['📍', 'Location', `${job.address}, ${job.city}`],
-              ['🗓', 'Scheduled', formatDatetime(job.scheduled_date)],
-              ['⏱', 'Duration', `${job.duration_hours} hours`],
-              ['💰', 'Pay', `${job.pay_per_worker.toLocaleString()} RSD / worker`],
-              ['👥', 'Crew size', `${job.crew_size} workers (${spots} spots left)`],
-            ].map(([icon, label, val]) => (
-              <div key={label as string} style={{ padding: '12px 14px', background: 'var(--bg-ov)', borderRadius: 'var(--r)', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 4 }}>{icon} {label}</div>
+            {([
+              [<MapPin size={13} strokeWidth={1.75} />,   'Location',  `${job.address}, ${job.city}`],
+              [<Calendar size={13} strokeWidth={1.75} />, 'Scheduled', formatDatetime(job.scheduled_date)],
+              [<Clock size={13} strokeWidth={1.75} />,    'Duration',  `${job.duration_hours} hours`],
+              [<Banknote size={13} strokeWidth={1.75} />, 'Pay',       `${job.pay_per_worker.toLocaleString()} RSD / worker`],
+              [<Users size={13} strokeWidth={1.75} />,    'Crew size', `${job.crew_size} workers (${spots} spots left)`],
+            ] as [React.ReactNode, string, string][]).map(([icon, label, val]) => (
+              <div key={label} style={{ padding: '12px 14px', background: 'var(--bg-ov)', borderRadius: 'var(--r)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>{icon} {label}</div>
                 <div style={{ fontSize: '.9375rem', fontWeight: 600 }}>{val}</div>
               </div>
             ))}
@@ -104,7 +105,7 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
                   <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>
                     {job.poster.rating_as_poster > 0 ? job.poster.rating_as_poster.toFixed(1) : 'No ratings yet'}
                   </span>
-                  {job.poster.verification_status === 'verified' && <span className="bdg bdg-verif">✓ Verified</span>}
+                  {job.poster.verification_status === 'verified' && <span className="bdg bdg-verif"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Verified</span>}
                 </div>
                 <div style={{ fontSize: '.8125rem', color: 'var(--tx-3)', marginTop: 2 }}>
                   {job.poster.completed_jobs_poster} jobs posted
@@ -116,7 +117,7 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
           {/* Already applied banner on view step */}
           {alreadyApplied && !checkingApplied && (
             <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,.1)', border: '1.5px solid rgba(245,158,11,.25)', borderRadius: 'var(--r)', fontSize: '.875rem', color: '#b45309', fontWeight: 600, display: 'flex', gap: 10, alignItems: 'center' }}>
-              <span>⚠️</span>
+              <AlertTriangle size={16} strokeWidth={1.75} />
               <span>You already applied for this job. Check "My Jobs" to see your application status.</span>
             </div>
           )}
@@ -148,7 +149,7 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
           <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
             <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginBottom: 4 }}>Applying for</div>
             <div style={{ fontWeight: 700 }}>{job.title}</div>
-            <div style={{ fontSize: '.875rem', color: 'var(--tx-2)' }}>💰 {job.pay_per_worker.toLocaleString()} RSD</div>
+            <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', display: 'flex', alignItems: 'center', gap: 4 }}><Banknote size={14} strokeWidth={1.75} /> {job.pay_per_worker.toLocaleString()} RSD</div>
           </div>
 
           <div className="fld">
@@ -163,7 +164,7 @@ export function JobDetailModal({ job, currentUser, onClose, onApplied, onMessage
           </div>
 
           <div className="cred-notice">
-            <span>🪙</span>
+            <Coins size={16} strokeWidth={1.75} />
             <span>Applying costs <strong>3 credits</strong>. You currently have <strong>{currentUser?.credits ?? 0}</strong> credits.</span>
           </div>
 

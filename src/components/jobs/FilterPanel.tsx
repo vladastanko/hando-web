@@ -1,3 +1,4 @@
+import { Check as CheckIcon } from 'lucide-react';
 import type { Category } from '../../types';
 
 export interface Filters {
@@ -42,7 +43,7 @@ const RATING_OPTIONS = [
 ];
 
 function Check({ on }: { on: boolean }) {
-  return <div className={`flt-chk${on ? ' on' : ''}`}>{on && <span style={{ color: '#fff', fontSize: '.625rem', fontWeight: 800 }}>✓</span>}</div>;
+  return <div className={`flt-chk${on ? ' on' : ''}`}>{on && <CheckIcon size={10} strokeWidth={2.5} color="#fff" />}</div>;
 }
 
 function Radio({ on }: { on: boolean }) {

@@ -1,3 +1,4 @@
+import { MapPin, Calendar, Clock, Check } from 'lucide-react';
 import type { Job } from '../../types';
 import { StatusBadge } from '../ui/StatusBadge';
 import { Avatar } from '../ui/Avatar';
@@ -24,7 +25,7 @@ export function JobCard({ job, onClick, animationDelay }: Props) {
           <StatusBadge status={job.status} />
           {job.category && <span className="bdg bdg-neu">{job.category.icon} {job.category.name}</span>}
           {job.distance_km != null && (
-            <span className="bdg bdg-neu">📍 {job.distance_km < 1 ? `${Math.round(job.distance_km * 1000)}m` : `${job.distance_km.toFixed(1)}km`}</span>
+            <span className="bdg bdg-neu"><MapPin size={12} strokeWidth={1.75} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{job.distance_km < 1 ? `${Math.round(job.distance_km * 1000)}m` : `${job.distance_km.toFixed(1)}km`}</span>
           )}
         </div>
       </div>
@@ -33,9 +34,9 @@ export function JobCard({ job, onClick, animationDelay }: Props) {
       {job.description && <div className="jcard-desc">{job.description}</div>}
 
       <div className="jcard-meta">
-        <span className="jmeta">📍 {job.city}</span>
-        <span className="jmeta">🗓 {formatDate(job.scheduled_date)}</span>
-        {job.duration_hours > 0 && <span className="jmeta">⏱ {job.duration_hours}h</span>}
+        <span className="jmeta"><MapPin size={12} strokeWidth={1.75} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{job.city}</span>
+        <span className="jmeta"><Calendar size={12} strokeWidth={1.75} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{formatDate(job.scheduled_date)}</span>
+        {job.duration_hours > 0 && <span className="jmeta"><Clock size={12} strokeWidth={1.75} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{job.duration_hours}h</span>}
       </div>
 
       {job.poster && (
@@ -48,7 +49,7 @@ export function JobCard({ job, onClick, animationDelay }: Props) {
               <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>{job.poster.rating_as_poster.toFixed(1)}</span>
             </>
           )}
-          {job.poster.verification_status === 'verified' && <span className="bdg bdg-verif">✓ Verified</span>}
+          {job.poster.verification_status === 'verified' && <span className="bdg bdg-verif"><Check size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />Verified</span>}
         </div>
       )}
 

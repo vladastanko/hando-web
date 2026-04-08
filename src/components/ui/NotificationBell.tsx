@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, Check, X, Flag, Star, MapPin, AlertTriangle, Coins } from 'lucide-react';
 import { notifications, supabase } from '../../lib/supabase';
 import type { Notification } from '../../types';
 import { timeAgo } from '../../utils/format';
@@ -8,15 +9,19 @@ interface Props {
   onNavigate?: (view: string) => void;
 }
 
-const NOTIF_ICONS: Record<string, string> = {
-  application_accepted: '✅',
-  application_rejected: '❌',
-  job_completed: '🏁',
-  new_rating: '⭐',
-  job_nearby: '📍',
-  dispute_update: '⚠️',
-  credit_low: '🪙',
-};
+function NotifIcon({ type }: { type: string }) {
+  const props = { size: 18, strokeWidth: 1.75 };
+  switch (type) {
+    case 'application_accepted': return <Check {...props} />;
+    case 'application_rejected': return <X {...props} />;
+    case 'job_completed':        return <Flag {...props} />;
+    case 'new_rating':           return <Star {...props} />;
+    case 'job_nearby':           return <MapPin {...props} />;
+    case 'dispute_update':       return <AlertTriangle {...props} />;
+    case 'credit_low':           return <Coins {...props} />;
+    default:                     return <Bell {...props} />;
+  }
+}
 
 export function NotificationBell({ userId, onNavigate }: Props) {
   const [open,   setOpen]   = useState(false);
@@ -86,12 +91,12 @@ export function NotificationBell({ userId, onNavigate }: Props) {
           position: 'relative', width: 34, height: 34, border: '1px solid var(--border)',
           borderRadius: 'var(--r-full)', background: 'var(--bg-ov)',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '1.0625rem', transition: 'all var(--t)',
+          transition: 'all var(--t)',
           color: unread > 0 ? 'var(--warn)' : 'var(--tx-2)',
         }}
         title="Notifications"
       >
-        🔔
+        <Bell size={18} strokeWidth={1.75} />
         {unread > 0 && (
           <span style={{
             position: 'absolute', top: -3, right: -3,
@@ -132,8 +137,8 @@ export function NotificationBell({ userId, onNavigate }: Props) {
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-ov)')}
                 onMouseLeave={e => (e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(99,87,255,.06)')}
               >
-                <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 1 }}>
-                  {NOTIF_ICONS[n.type] ?? '🔔'}
+                <span style={{ flexShrink: 0, marginTop: 1, display: 'inline-flex', alignItems: 'center', color: 'var(--tx-2)' }}>
+                  <NotifIcon type={n.type} />
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.875rem', marginBottom: 2 }}>{n.title}</div>

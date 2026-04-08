@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Map as MapIcon } from 'lucide-react';
 import type { Job } from '../../types';
 
 // Uses MapLibre GL JS (open source Mapbox fork) + OpenFreeMap tiles
@@ -205,7 +206,7 @@ export function JobMap({ jobs, userLocation, selectedJobId, onJobClick }: Props)
         justifyContent: 'center', gap: 10, background: 'var(--bg-ov)',
         color: 'var(--tx-2)', fontSize: '.875rem', padding: 24, textAlign: 'center',
       }}>
-        <span style={{ fontSize: '2rem' }}>🗺</span>
+        <MapIcon size={32} strokeWidth={1.5} />
         <span>{loadError}</span>
         <span style={{ fontSize: '.75rem', color: 'var(--tx-3)' }}>Check your internet connection</span>
       </div>
