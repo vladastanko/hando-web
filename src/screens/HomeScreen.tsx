@@ -234,9 +234,9 @@ export default function HomeScreen({
 
         {/* ── Split view ──────────────────────────────────── */}
         {view === 'split' && (
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            {/* Map — left fixed */}
-            <div style={{ flex: '0 0 420px', minWidth: 0 }}>
+          <div className="split-view">
+            {/* Map panel */}
+            <div className="split-map">
               <div className="map-wrap">
                 <div className="map-hdr">
                   <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{jobsOnMap.length} on map</span>
@@ -250,8 +250,8 @@ export default function HomeScreen({
               </div>
             </div>
 
-            {/* List — right scrollable */}
-            <div style={{ flex: 1, minWidth: 0, maxHeight: 520, overflowY: 'auto' }}>
+            {/* List panel */}
+            <div className="split-list">
               {loading ? (
                 <div className="jgrid" style={{ gridTemplateColumns: '1fr' }}>
                   {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
