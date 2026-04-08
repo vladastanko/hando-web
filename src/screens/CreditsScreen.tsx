@@ -98,12 +98,12 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
       return;
     }
 
-    onMessage('Order submitted! Complete the bank transfer to receive your credits.', 'success');
+    onMessage(t('orderSubmitted'), 'success');
     setSelectedPkg(null);
     await loadPendingOrders();
   };
 
-  if (loading) return <div className="loading"><span className="spin" />Loading...</div>;
+  if (loading) return <div className="loading"><span className="spin" />{t('loading')}</div>;
 
   return (
     <div className="pg-n">
@@ -118,8 +118,8 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
         <div className="cbal-amt">{balance.toLocaleString()}</div>
         <div className="cbal-lb">{t('creditsAvailable')}</div>
         <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><MapPin size={14} strokeWidth={1.75} /> Post a job <strong>10 credits</strong></div>
-          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><ClipboardList size={14} strokeWidth={1.75} /> Apply for a job <strong>3 credits</strong></div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><MapPin size={14} strokeWidth={1.75} /> {t('postJobCost')}</div>
+          <div style={{ fontSize: '.8125rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5 }}><ClipboardList size={14} strokeWidth={1.75} /> {t('applyJobCost')}</div>
         </div>
       </div>
 
@@ -134,9 +134,9 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                 background: 'var(--bg-el)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
               }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '.9375rem' }}>{order.credits} credits — {order.amount_rsd.toLocaleString()} RSD</div>
+                  <div style={{ fontWeight: 700, fontSize: '.9375rem' }}>{order.credits} {t('creditsUnit')} — {order.amount_rsd.toLocaleString()} RSD</div>
                   <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginTop: 2 }}>
-                    Ref: <code style={{ background: 'var(--bg-ov)', padding: '1px 5px', borderRadius: 4 }}>{order.reference}</code>
+                    {t('refLabel')}: <code style={{ background: 'var(--bg-ov)', padding: '1px 5px', borderRadius: 4 }}>{order.reference}</code>
                     {' · '}{timeAgo(order.created_at)}
                   </div>
                 </div>
@@ -182,10 +182,10 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
                 )}
                 <div>
                   <div className="pkg-cr">{pkg.credits.toLocaleString()}</div>
-                  <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 500 }}>credits</div>
+                  <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 500 }}>{t('creditsUnit')}</div>
                 </div>
                 <div className="pkg-pr">{pkg.price_rsd.toLocaleString()} RSD</div>
-                <div className="pkg-pu">{(pkg.price_rsd / pkg.credits).toFixed(2)} RSD / credit</div>
+                <div className="pkg-pu">{(pkg.price_rsd / pkg.credits).toFixed(2)} {t('perCredit')}</div>
                 <button
                   className={`btn ${isSelected ? 'btn-p' : i === FEATURED_PKG_INDEX ? 'btn-p' : 'btn-s'} btn-fw btn-sm`}
                   onClick={e => { e.stopPropagation(); handleSelectPackage(pkg); }}
@@ -210,17 +210,16 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
             <ClipboardList size={18} strokeWidth={1.75} /> {t('paymentInstructions')} — {selectedPkg.price_rsd.toLocaleString()} RSD
           </div>
           <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', marginBottom: 16, lineHeight: 1.55 }}>
-            Transfer <strong style={{ color: 'var(--tx)' }}>{selectedPkg.price_rsd.toLocaleString()} RSD</strong> to the account below.
-            Use the reference number so we can match your payment. Credits are added within <strong style={{ color: 'var(--tx)' }}>1–24 hours</strong> on business days.
+            {t('transferDesc').replace('{amount}', selectedPkg.price_rsd.toLocaleString())}
           </div>
 
           {/* Bank details */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             {[
-              ['Bank',    BANK_INFO.bank],
-              ['Name',    BANK_INFO.name],
-              ['Account', BANK_INFO.account],
-              ['SWIFT',   BANK_INFO.swift],
+              [t('bankLabel'),    BANK_INFO.bank],
+              [t('nameLabel2'),   BANK_INFO.name],
+              [t('accountLabel'), BANK_INFO.account],
+              [t('swiftLabel'),   BANK_INFO.swift],
             ].map(([label, val]) => (
               <div key={label} style={{
                 padding: '11px 14px', background: 'var(--bg-ov)', borderRadius: 'var(--r)',
@@ -283,11 +282,11 @@ export default function CreditsScreen({ userId, userEmail, balance, onPurchased:
         <div style={{ fontWeight: 700, fontSize: '.875rem', marginBottom: 12 }}>{t('howItWorks')}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            ['1', 'Select a credit package above'],
-            ['2', 'Transfer the amount to our bank account using the reference number'],
-            ['3', 'Click "I\'ve initiated the transfer" to notify us'],
-            ['4', 'We verify and add credits to your account within 1–24h'],
-            ['5', 'You receive a notification when credits are added'],
+            ['1', t('howItWorks1')],
+            ['2', t('howItWorks2')],
+            ['3', t('howItWorks3')],
+            ['4', t('howItWorks4')],
+            ['5', t('howItWorks5')],
           ].map(([n, text]) => (
             <div key={n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{

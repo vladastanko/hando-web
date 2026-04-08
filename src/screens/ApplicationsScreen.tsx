@@ -140,7 +140,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     const res = await applications.accept(appId, jobId);
     setActionLoading(null);
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage('Applicant accepted! A conversation has started.', 'success');
+    onMessage(t('applicantAccepted'), 'success');
 
     const job = myJobs.find(j => j.id === jobId);
     if (job && job.status === 'open') {
@@ -166,7 +166,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     setActionLoading(null);
     setWithdrawTarget(null);
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage('Application withdrawn.', 'success');
+    onMessage(t('appWithdrawn'), 'success');
     load();
   };
 
@@ -210,7 +210,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
     const res = await jobs.update(editJob.id, { description: editDesc.trim() });
     setEditSaving(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage('Description updated.', 'success');
+    onMessage(t('descUpdated'), 'success');
     setEditJob(null);
     load();
   };
@@ -340,8 +340,8 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           {myApps.length === 0 ? (
             <div className="empty" style={{ marginTop: 48 }}>
               <span className="empty-ic"><ClipboardList size={32} strokeWidth={1.5} /></span>
-              <span className="empty-t">No applications yet</span>
-              <span className="empty-s">Browse Discover to find jobs and apply.</span>
+              <span className="empty-t">{t('noApplications')}</span>
+              <span className="empty-s">{t('noApplicationsBrowse')}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -390,7 +390,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       {app.status === 'accepted' && !isCompleted && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
                           <Check size={16} strokeWidth={1.75} />
-                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--ok)', flex: 1 }}>Accepted — check your inbox.</span>
+                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--ok)', flex: 1 }}>{t('acceptedInbox')}</span>
                           <button className="btn btn-s btn-sm" onClick={onOpenChat} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <MessageCircle size={14} strokeWidth={1.75} /> Chat
                           </button>
@@ -399,13 +399,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       {app.status === 'rejected' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(239,68,68,.07)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 'var(--r)', marginBottom: 12 }}>
                           <X size={16} strokeWidth={1.75} />
-                          <span style={{ fontSize: '.875rem', color: '#ef4444' }}>Your application was not selected for this job.</span>
+                          <span style={{ fontSize: '.875rem', color: '#ef4444' }}>{t('notif_application_rejected_body')}</span>
                         </div>
                       )}
                       {isCompleted && app.status === 'accepted' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'rgba(91,94,244,.08)', border: '1px solid rgba(91,94,244,.25)', borderRadius: 'var(--r)', marginBottom: 12 }}>
                           <Flag size={16} strokeWidth={1.75} />
-                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--brand)' }}>Job completed! Leave a rating for the employer.</span>
+                          <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--brand)' }}>{t('notif_job_completed_body')}</span>
                         </div>
                       )}
 
@@ -416,14 +416,15 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                           <button className="btn btn-d btn-sm" onClick={() => setWithdrawTarget(app.id)} disabled={actionLoading === app.id}>
                             {actionLoading === app.id ? '...' : t('withdrawConfirm')}
                           </button>
+
                         )}
                         {canRate && (
                           <button className="btn btn-p btn-sm" onClick={() => openRate(app, 'poster')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <Star size={14} strokeWidth={1.75} /> Rate Employer
+                            <Star size={14} strokeWidth={1.75} /> {t('ratePoster')}
                           </button>
                         )}
                         {ratedIds.has(app.id) && (
-                          <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={13} strokeWidth={2} /> Rated</span>
+                          <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={13} strokeWidth={2} /> {t('ratedLabel')}</span>
                         )}
                       </div>
                     </div>
@@ -573,7 +574,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
               {/* Sort */}
               {applicants.length > 1 && (
                 <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>Sort:</span>
+                  <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('sortByLabel')}</span>
                   {(['newest', 'rating', 'jobs_done'] as SortKey[]).map(s => (
                     <button
                       key={s}
@@ -598,8 +599,8 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
               ) : applicants.length === 0 ? (
                 <div className="empty" style={{ padding: '48px 0' }}>
                   <span className="empty-ic"><User size={32} strokeWidth={1.5} /></span>
-                  <span className="empty-t">No applications yet</span>
-                  <span className="empty-s">Share your job to attract workers.</span>
+                  <span className="empty-t">{t('noApplicants')}</span>
+                  <span className="empty-s">{t('shareJob')}</span>
                 </div>
               ) : (
                 <div className="applicant-inner">
@@ -690,7 +691,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
                       {selectedApp.message && (
                         <div style={{ marginBottom: 16 }}>
-                          <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>Cover message</div>
+                          <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>{t('coverMessage')}</div>
                           <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65, fontStyle: 'italic' }}>
                             "{selectedApp.message}"
                           </div>
@@ -699,13 +700,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
                       {selectedApp.worker?.bio && (
                         <div style={{ marginBottom: 16 }}>
-                          <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>About</div>
+                          <div style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--tx-3)', marginBottom: 8 }}>{t('about')}</div>
                           <p style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.65, margin: 0 }}>{selectedApp.worker.bio}</p>
                         </div>
                       )}
 
                       <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', marginBottom: 16 }}>
-                        Applied {timeAgo(selectedApp.created_at)}
+                        {t('appliedAgo')} {timeAgo(selectedApp.created_at)}
                       </div>
 
                       {selectedApp.status === 'pending' && (
@@ -729,34 +730,34 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       {selectedApp.status === 'accepted' && panelJob.status !== 'completed' && (
                         <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
                           <div style={{ padding: '10px 13px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--ok)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Check size={16} strokeWidth={1.75} /> Accepted — conversation started in Inbox
+                            <Check size={16} strokeWidth={1.75} /> {t('acceptedConvo')}
                           </div>
                           <button className="btn btn-s btn-fw" onClick={onOpenChat} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                            <MessageCircle size={14} strokeWidth={1.75} /> Open Chat
+                            <MessageCircle size={14} strokeWidth={1.75} /> {t('openChat')}
                           </button>
                           {/* FIX: mark complete also accessible from worker detail */}
                           {panelJob.status === 'in_progress' && (
                             <button className="btn btn-ok btn-fw" onClick={() => setCompleteTarget(panelJob.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                              <Flag size={14} strokeWidth={1.75} /> Mark job as completed
+                              <Flag size={14} strokeWidth={1.75} /> {t('markComplete')}
                             </button>
                           )}
                         </div>
                       )}
                       {selectedApp.status === 'accepted' && panelJob.status === 'completed' && !ratedIds.has(selectedApp.id) && (
                         <button className="btn btn-p btn-fw" onClick={() => openRate(selectedApp, 'worker')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                          <Star size={14} strokeWidth={1.75} /> Rate this worker
+                          <Star size={14} strokeWidth={1.75} /> {t('rateWorker')}
                         </button>
                       )}
                       {ratedIds.has(selectedApp.id) && (
                         <div style={{ padding: '10px 13px', background: 'var(--brand-s)', border: '1px solid rgba(91,94,244,.2)', borderRadius: 'var(--r)', fontSize: '.875rem', color: 'var(--brand)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Check size={14} strokeWidth={1.75} /> You rated this worker
+                          <Check size={14} strokeWidth={1.75} /> {t('youRatedWorker')}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--tx-3)', padding: 24 }}>
                       <User size={32} strokeWidth={1.5} style={{ opacity: .4 }} />
-                      <span style={{ fontSize: '.875rem' }}>Select an applicant to review</span>
+                      <span style={{ fontSize: '.875rem' }}>{t('selectApplicant')}</span>
                     </div>
                   )}
                 </div>
@@ -767,14 +768,14 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       )}
 
       {/* ── Withdraw confirmation modal ───────────────────── */}
-      <Modal open={!!withdrawTarget} onClose={() => setWithdrawTarget(null)} title="Withdraw application?" center>
+      <Modal open={!!withdrawTarget} onClose={() => setWithdrawTarget(null)} title={t('withdrawApp')} center>
         <div style={{ padding: '4px 0 16px' }}>
           <div style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
             <AlertTriangle size={20} strokeWidth={1.75} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4 }}>Are you sure?</div>
+              <div style={{ fontWeight: 700, fontSize: '.9375rem', marginBottom: 4 }}>{t('areYouSure')}</div>
               <div style={{ fontSize: '.875rem', color: 'var(--tx-2)', lineHeight: 1.6 }}>
-                The employer will no longer see your application. Credits spent on this application <strong>will not be refunded</strong>.
+                {t('withdrawWarn')}
               </div>
             </div>
           </div>
@@ -785,9 +786,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             onClick={handleWithdrawConfirm}
             disabled={actionLoading === withdrawTarget}
           >
-            {actionLoading === withdrawTarget ? 'Withdrawing...' : 'Confirm withdraw'}
+            {actionLoading === withdrawTarget ? t('withdrawingLabel') : t('confirmWithdraw')}
           </button>
-          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><ChevronLeft size={16} strokeWidth={1.75} /> Go back</button>
+          <button className="btn btn-s btn-fw" onClick={() => setWithdrawTarget(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><ChevronLeft size={16} strokeWidth={1.75} /> {t('goBack')}</button>
         </div>
       </Modal>
 
@@ -813,7 +814,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           >
             {actionLoading === completeTarget ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Hourglass size={14} strokeWidth={1.75} /> Završavam...</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Flag size={14} strokeWidth={1.75} /> Potvrdi završetak posla</span>}
           </button>
-          <button className="btn btn-s btn-fw" onClick={() => setCompleteTarget(null)}>Otkaži</button>
+          <button className="btn btn-s btn-fw" onClick={() => setCompleteTarget(null)}>{t('cancel')}</button>
         </div>
       </Modal>
 
@@ -850,20 +851,20 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       <Modal open={!!editJob} onClose={() => setEditJob(null)} title={`Edit: "${editJob?.title ?? ''}"`}>
         <div className="info-box warn" style={{ marginBottom: 14 }}>
           <AlertTriangle size={15} strokeWidth={1.75} />
-          <span>Only the description can be changed. Pay, crew size and date are locked after posting.</span>
+          <span>{t('editDescNote')}</span>
         </div>
         <div className="fld">
-          <label className="flb">Description</label>
+          <label className="flb">{t('descriptionLabel')}</label>
           <textarea className="txta" value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={6} />
         </div>
         <button className="btn btn-p btn-fw btn-lg" onClick={handleEditSave} disabled={editSaving}>
-          {editSaving ? 'Saving...' : 'Save changes'}
+          {editSaving ? t('saving') : t('saveChanges2')}
         </button>
-        <button className="btn btn-s btn-fw" onClick={() => setEditJob(null)} style={{ marginTop: 8 }}>Cancel</button>
+        <button className="btn btn-s btn-fw" onClick={() => setEditJob(null)} style={{ marginTop: 8 }}>{t('cancel')}</button>
       </Modal>
 
       {/* ── Multi-segment Rating modal ───────────────────── */}
-      <Modal open={!!rateTarget} onClose={() => setRateTarget(null)} title="Leave a rating">
+      <Modal open={!!rateTarget} onClose={() => setRateTarget(null)} title={t('leaveRating')}>
         <div style={{ paddingBottom: 8 }}>
           <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 2 }}>
             {rateTarget?.asRole === 'worker'
@@ -871,7 +872,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
               : 'Employer'}
           </div>
           <div style={{ fontSize: '.875rem', color: 'var(--tx-3)', marginBottom: 20 }}>
-            How was your experience working {rateTarget?.asRole === 'worker' ? 'with this person' : 'for this employer'}?
+            {rateTarget?.asRole === 'worker' ? t('ratingExpWorker') : t('ratingExpPoster')}
           </div>
 
           {/* Category scores */}
@@ -908,7 +909,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
             borderRadius: 'var(--r)', display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', marginBottom: 18,
           }}>
-            <span style={{ fontSize: '.875rem', color: 'var(--tx-2)' }}>Overall rating</span>
+            <span style={{ fontSize: '.875rem', color: 'var(--tx-2)' }}>{t('overallRating')}</span>
             <span style={{ fontWeight: 800, fontSize: '1.0625rem', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <Star size={16} strokeWidth={1.75} /> {avgScores(rateScores).toFixed(1)}
             </span>
@@ -917,11 +918,11 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           {/* Public feedback */}
           <div className="fld" style={{ marginBottom: 12 }}>
             <label className="flb">
-              Public review <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>(visible to everyone)</span>
+              {t('publicReview')} <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>{t('visibleToAll')}</span>
             </label>
             <textarea
               className="txta"
-              placeholder="Share your experience — this will be visible on their profile..."
+              placeholder={t('publicPlaceholder')}
               value={ratePublic}
               onChange={e => setRatePublic(e.target.value)}
               rows={3}
@@ -931,11 +932,11 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
           {/* Private feedback */}
           <div className="fld">
             <label className="flb">
-              Private note <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>(only visible to admins)</span>
+              {t('privateNote')} <span style={{ fontWeight: 400, color: 'var(--tx-3)' }}>{t('onlyAdmins')}</span>
             </label>
             <textarea
               className="txta"
-              placeholder="Anything you'd prefer to keep private..."
+              placeholder={t('privatePlaceholder')}
               value={ratePrivate}
               onChange={e => setRatePrivate(e.target.value)}
               rows={2}
@@ -944,9 +945,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
           <button className="btn btn-p btn-fw btn-lg" onClick={submitRating} disabled={rateSubmitting}>
-            {rateSubmitting ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Hourglass size={14} strokeWidth={1.75} /> Slanje...</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Star size={14} strokeWidth={1.75} /> Pošalji ocenu</span>}
+            {rateSubmitting ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Hourglass size={14} strokeWidth={1.75} /> {t('submitting')}</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Star size={14} strokeWidth={1.75} /> {t('sendRating')}</span>}
           </button>
-          <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>Otkaži</button>
+          <button className="btn btn-s btn-fw" onClick={() => setRateTarget(null)}>{t('cancel')}</button>
         </div>
       </Modal>
 

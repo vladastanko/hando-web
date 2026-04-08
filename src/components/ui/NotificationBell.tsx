@@ -24,6 +24,21 @@ function NotifIcon({ type }: { type: string }) {
   }
 }
 
+type TKey = Parameters<ReturnType<typeof useLanguage>['t']>[0];
+
+function notifKeys(type: string): { title: TKey; body: TKey } | null {
+  const map: Record<string, { title: TKey; body: TKey }> = {
+    application_accepted: { title: 'notif_application_accepted_title', body: 'notif_application_accepted_body' },
+    application_rejected: { title: 'notif_application_rejected_title', body: 'notif_application_rejected_body' },
+    job_completed:        { title: 'notif_job_completed_title',        body: 'notif_job_completed_body'        },
+    new_rating:           { title: 'notif_new_rating_title',           body: 'notif_new_rating_body'           },
+    job_nearby:           { title: 'notif_job_nearby_title',           body: 'notif_job_nearby_body'           },
+    dispute_update:       { title: 'notif_dispute_update_title',       body: 'notif_dispute_update_body'       },
+    credit_low:           { title: 'notif_credit_low_title',           body: 'notif_credit_low_body'           },
+  };
+  return map[type] ?? null;
+}
+
 export function NotificationBell({ userId, onNavigate }: Props) {
   const { t } = useLanguage();
   const [open,   setOpen]   = useState(false);
@@ -143,8 +158,10 @@ export function NotificationBell({ userId, onNavigate }: Props) {
                   <NotifIcon type={n.type} />
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.875rem', marginBottom: 2 }}>{n.title}</div>
-                  <div style={{ fontSize: '.8125rem', color: 'var(--tx-2)', lineHeight: 1.45 }}>{n.body}</div>
+                  {(() => { const k = notifKeys(n.type); return (<>
+                    <div style={{ fontWeight: n.is_read ? 500 : 700, fontSize: '.875rem', marginBottom: 2 }}>{k ? t(k.title) : n.title}</div>
+                    <div style={{ fontSize: '.8125rem', color: 'var(--tx-2)', lineHeight: 1.45 }}>{k ? t(k.body) : n.body}</div>
+                  </>); })()}
                   <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
                 </div>
                 {!n.is_read && (
