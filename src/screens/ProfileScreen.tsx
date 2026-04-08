@@ -6,6 +6,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { Stars } from '../components/ui/Stars';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { timeAgo } from '../utils/format';
+import { useLanguage } from '../i18n';
 
 interface Props {
   currentUser: { id: string; email?: string };
@@ -19,6 +20,7 @@ type ProfileTab = 'overview' | 'edit' | 'ratings' | 'verification';
 type RatingsTab = 'received' | 'given';
 
 export default function ProfileScreen({ currentUser, profile, onProfileUpdated, onMessage, onReferralClick }: Props) {
+  const { t, lang, setLang } = useLanguage();
   const [tab, setTab] = useState<ProfileTab>('overview');
   const [ratingsTab, setRatingsTab] = useState<RatingsTab>('received');
   const [ratingsReceived, setRatingsReceived] = useState<Rating[]>([]);
@@ -78,7 +80,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
     setSaving(false);
     if (res.error) { onMessage(res.error, 'error'); return; }
     if (res.data) onProfileUpdated(res.data);
-    onMessage('Profile updated.', 'success');
+    onMessage(t('profileUpdated'), 'success');
   };
 
   const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -282,12 +284,12 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
       {/* ── Tabs ─────────────────────────────────────── */}
       <div className="tabs" style={{ marginBottom: 24 }}>
-        {(['overview', 'edit', 'ratings', 'verification'] as ProfileTab[]).map(t => (
-          <button key={t} className={`tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
-            {t === 'overview' ? 'Overview'
-              : t === 'edit' ? 'Edit Profile'
-              : t === 'ratings' ? `Ratings (${ratingsReceived.length})`
-              : 'Verification'}
+        {(['overview', 'edit', 'ratings', 'verification'] as ProfileTab[]).map(tabKey => (
+          <button key={tabKey} className={`tab${tab === tabKey ? ' on' : ''}`} onClick={() => setTab(tabKey)}>
+            {tabKey === 'overview' ? t('overview')
+              : tabKey === 'edit' ? t('editProfile')
+              : tabKey === 'ratings' ? `${t('ratings')} (${ratingsReceived.length})`
+              : t('verification')}
           </button>
         ))}
       </div>
@@ -297,9 +299,9 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         <div className="card">
           <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {([
-              [<User size={18} strokeWidth={1.75} />, 'Full name', displayName],
-              [<Mail size={18} strokeWidth={1.75} />, 'Email', currentUser.email ?? '—'],
-              [<MapPin size={18} strokeWidth={1.75} />, 'City', profile?.city || 'Not set'],
+              [<User size={18} strokeWidth={1.75} />, t('fullName'), displayName],
+              [<Mail size={18} strokeWidth={1.75} />, t('email'), currentUser.email ?? '—'],
+              [<MapPin size={18} strokeWidth={1.75} />, t('city'), profile?.city || t('notSet')],
             ] as [React.ReactNode, string, string][]).map(([icon, label, val]) => (
               <div key={label} style={{
                 display: 'flex', gap: 12, padding: '12px 14px',
@@ -314,10 +316,28 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
             ))}
             {profile?.bio && (
               <div style={{ padding: '12px 14px', background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)' }}>
-                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Bio</div>
+                <div style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('bio')}</div>
                 <div style={{ fontSize: '.9375rem', color: 'var(--tx-2)', lineHeight: 1.65 }}>{profile.bio}</div>
               </div>
             )}
+
+            {/* Language switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--bg-ov)', border: '1.5px solid var(--border)', borderRadius: 'var(--r)' }}>
+              <span style={{ fontSize: '.75rem', color: 'var(--tx-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', flex: 1 }}>{t('language')}</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className={`btn btn-sm ${lang === 'en' ? 'btn-p' : 'btn-s'}`}
+                  onClick={() => setLang('en')}
+                  style={{ minWidth: 36, fontWeight: 700 }}
+                >EN</button>
+                <button
+                  className={`btn btn-sm ${lang === 'sr' ? 'btn-p' : 'btn-s'}`}
+                  onClick={() => setLang('sr')}
+                  style={{ minWidth: 36, fontWeight: 700 }}
+                >SR</button>
+              </div>
+            </div>
+
             {onReferralClick && (
               <button
                 className="btn btn-g btn-fw"
@@ -325,7 +345,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 <Gift size={18} strokeWidth={1.75} />
-                Refer a Friend — Earn Credits
+                {t('referFriend')}
               </button>
             )}
           </div>
@@ -337,15 +357,15 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
         <div className="card">
           <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="fld">
-              <label className="flb">Full name</label>
+              <label className="flb">{t('fullName')}</label>
               <input className="inp" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Your full name" />
             </div>
             <div className="fld">
-              <label className="flb">City</label>
+              <label className="flb">{t('city')}</label>
               <input className="inp" value={cityField} onChange={e => setCityField(e.target.value)} placeholder="Novi Sad" />
             </div>
             <div className="fld">
-              <label className="flb">Bio <span style={{ color: 'var(--tx-3)', fontWeight: 400 }}>(optional)</span></label>
+              <label className="flb">{t('bio')} <span style={{ color: 'var(--tx-3)', fontWeight: 400 }}>{t('bioOptional')}</span></label>
               <textarea
                 className="txta"
                 value={bio}
@@ -355,7 +375,7 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
               />
             </div>
             <button className="btn btn-p btn-fw btn-lg" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('saving') : t('saveChanges')}
             </button>
           </div>
         </div>

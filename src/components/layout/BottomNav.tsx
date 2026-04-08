@@ -1,4 +1,5 @@
 import { Home, ClipboardList, MessageCircle, User } from 'lucide-react';
+import { useLanguage } from '../../i18n';
 
 export type TabKey = 'home' | 'applications' | 'inbox' | 'profile';
 
@@ -8,14 +9,14 @@ interface Props {
   badges?: Partial<Record<TabKey, number>>;
 }
 
-const items: { key: TabKey; Icon: typeof Home; label: string }[] = [
-  { key: 'home',         Icon: Home,          label: 'Discover'  },
-  { key: 'applications', Icon: ClipboardList, label: 'My Jobs'   },
-  { key: 'inbox',        Icon: MessageCircle, label: 'Inbox'     },
-  { key: 'profile',      Icon: User,          label: 'Profile'   },
-];
-
 export function BottomNav({ active, onChange, badges = {} }: Props) {
+  const { t } = useLanguage();
+  const items: { key: TabKey; Icon: typeof Home; label: string }[] = [
+    { key: 'home',         Icon: Home,          label: t('navHome')         },
+    { key: 'applications', Icon: ClipboardList, label: t('navJobs')         },
+    { key: 'inbox',        Icon: MessageCircle, label: t('navInbox')        },
+    { key: 'profile',      Icon: User,          label: t('navProfile')      },
+  ];
   return (
     <nav className="bnav">
       {items.map(item => {

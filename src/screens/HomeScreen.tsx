@@ -6,6 +6,7 @@ import { JobDetailModal } from '../components/jobs/JobDetailModal';
 import { FilterPanel, type Filters, DEFAULT_FILTERS } from '../components/jobs/FilterPanel';
 import { JobMap } from '../components/map/JobMap';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { useLanguage } from '../i18n';
 
 interface Props {
   jobs: Job[];
@@ -32,6 +33,7 @@ export default function HomeScreen({
   const [filters,     setFilters]     = useState<Filters>(DEFAULT_FILTERS);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const { t } = useLanguage();
 
   const allCats = useMemo(() => [
     { id: '', name: 'All', icon: null as null, color: '#5b5ef4' },
@@ -100,7 +102,7 @@ export default function HomeScreen({
             <span className="srch-ic"><Search size={16} strokeWidth={1.75} /></span>
             <input
               className="srch-inp"
-              placeholder="Search jobs..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -112,7 +114,7 @@ export default function HomeScreen({
               className="btn btn-s btn-sm"
               onClick={onRequestLocation}
               disabled={locationLoading}
-              title={userLocation ? 'Update location' : 'Enable location'}
+              title={userLocation ? t('updateLocation') : t('enableLocation')}
             >
               {locationLoading
                 ? <span className="spin" style={{ width: 14, height: 14 }} />
@@ -120,7 +122,7 @@ export default function HomeScreen({
               }
             </button>
 
-            <button className="btn btn-s btn-sm" onClick={onRefresh} disabled={loading} title="Refresh">
+            <button className="btn btn-s btn-sm" onClick={onRefresh} disabled={loading} title={t('refresh')}>
               {loading ? <span className="spin" style={{ width: 14, height: 14 }} /> : <RefreshCw size={16} strokeWidth={1.75} />}
             </button>
 
@@ -136,9 +138,9 @@ export default function HomeScreen({
 
           {/* View switcher */}
           <div className="vs" style={{ flexShrink: 0 }}>
-            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><List size={14} strokeWidth={1.75} /><span className="vs-label">List</span></button>
-            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Map size={14} strokeWidth={1.75} /><span className="vs-label">Map</span></button>
-            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Columns2 size={14} strokeWidth={1.75} /><span className="vs-label">Split</span></button>
+            <button className={`vs-btn${view === 'list' ? ' on' : ''}`} onClick={() => setView('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><List size={14} strokeWidth={1.75} /><span className="vs-label">{t('listView')}</span></button>
+            <button className={`vs-btn${view === 'map'  ? ' on' : ''}`} onClick={() => setView('map')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Map size={14} strokeWidth={1.75} /><span className="vs-label">{t('mapView')}</span></button>
+            <button className={`vs-btn${view === 'split'? ' on' : ''}`} onClick={() => setView('split')} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Columns2 size={14} strokeWidth={1.75} /><span className="vs-label">{t('splitView')}</span></button>
           </div>
         </div>
 
@@ -171,18 +173,18 @@ export default function HomeScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="sec-ttl">{filtered.length} job{filtered.length !== 1 ? 's' : ''}</span>
             {userLocation
-              ? <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={13} strokeWidth={1.75} /> near you</span>
-              : <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)' }}>• enable location for distance</span>
+              ? <span style={{ fontSize: '.8125rem', color: 'var(--ok)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={13} strokeWidth={1.75} /> {t('nearYou')}</span>
+              : <span style={{ fontSize: '.8125rem', color: 'var(--tx-3)' }}>• {t('enableLocationDistance')}</span>
             }
             {activeFiltersCount > 0 && (
               <span style={{ fontSize: '.75rem', color: 'var(--brand)', fontWeight: 700 }}>
-                ({activeFiltersCount} filter{activeFiltersCount > 1 ? 's' : ''} active)
+                ({activeFiltersCount} {t('filtersActive')})
               </span>
             )}
           </div>
           {!userLocation && (
             <button className="btn btn-s btn-sm" onClick={onRequestLocation} disabled={locationLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              {locationLoading ? '...' : <><MapPin size={14} strokeWidth={1.75} /> Enable location</>}
+              {locationLoading ? '...' : <><MapPin size={14} strokeWidth={1.75} /> {t('enableLocation')}</>}
             </button>
           )}
         </div>
@@ -191,7 +193,7 @@ export default function HomeScreen({
         {view === 'map' && (
           <div className="map-wrap">
             <div className="map-hdr">
-              <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{jobsOnMap.length} jobs on map</span>
+              <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{jobsOnMap.length} {t('jobsOnMap')}</span>
             </div>
             <JobMap
               jobs={filtered}
@@ -211,11 +213,11 @@ export default function HomeScreen({
           ) : filtered.length === 0 ? (
             <div className="empty">
               <span className="empty-ic"><Search size={32} strokeWidth={1.5} /></span>
-              <span className="empty-t">No jobs found</span>
+              <span className="empty-t">{t('noJobsFound')}</span>
               <span className="empty-s">
                 {activeFiltersCount > 0
-                  ? 'Try removing some filters.'
-                  : 'Try adjusting your search or check back later.'}
+                  ? t('tryFilters')
+                  : t('tryLater')}
               </span>
             </div>
           ) : (
@@ -239,7 +241,7 @@ export default function HomeScreen({
             <div className="split-map">
               <div className="map-wrap">
                 <div className="map-hdr">
-                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{jobsOnMap.length} on map</span>
+                  <span style={{ fontSize: '.875rem', fontWeight: 600 }}>{jobsOnMap.length} {t('onMap')}</span>
                 </div>
                 <JobMap
                   jobs={filtered}
@@ -259,9 +261,9 @@ export default function HomeScreen({
               ) : filtered.length === 0 ? (
                 <div className="empty">
                   <span className="empty-ic"><Search size={32} strokeWidth={1.5} /></span>
-                  <span className="empty-t">No jobs found</span>
+                  <span className="empty-t">{t('noJobsFound')}</span>
                   <span className="empty-s">
-                    {activeFiltersCount > 0 ? 'Try removing some filters.' : 'No open jobs nearby.'}
+                    {activeFiltersCount > 0 ? t('tryFilters') : t('tryLater')}
                   </span>
                 </div>
               ) : (

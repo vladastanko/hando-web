@@ -3,6 +3,7 @@ import { Coins, User, Undo2 } from 'lucide-react';
 import type { Profile } from '../../types';
 import { getInitials } from '../../utils/format';
 import { NotificationBell } from '../ui/NotificationBell';
+import { useLanguage } from '../../i18n';
 
 type Mode = 'find' | 'post';
 
@@ -41,6 +42,7 @@ function HandooIcon({ size = 20 }: { size?: number }) {
 export function TopBar({ profile, email, creditBalance, mode, userId, onModeChange, onCreditsClick, onProfileClick, onLogout, onNavigate }: Props) {
   const [ddOpen, setDdOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setDdOpen(false); };
@@ -66,10 +68,10 @@ export function TopBar({ profile, email, creditBalance, mode, userId, onModeChan
         {/* Mode toggle */}
         <div className="mode-toggle">
           <button className={`mode-btn${mode === 'find' ? ' active' : ''}`} onClick={() => onModeChange('find')}>
-            Find work
+            {t('findWork')}
           </button>
           <button className={`mode-btn${mode === 'post' ? ' active' : ''}`} onClick={() => onModeChange('post')}>
-            Post work
+            {t('postWork')}
           </button>
         </div>
 
@@ -101,14 +103,14 @@ export function TopBar({ profile, email, creditBalance, mode, userId, onModeChan
                   <div className="dd-email">{email}</div>
                 </div>
                 <button className="dd-item" onClick={() => { setDdOpen(false); onProfileClick(); }}>
-                  <User size={16} strokeWidth={1.75} /> My Profile
+                  <User size={16} strokeWidth={1.75} /> {t('myProfile')}
                 </button>
                 <button className="dd-item" onClick={() => { setDdOpen(false); onCreditsClick(); }}>
-                  <Coins size={16} strokeWidth={1.75} /> Credits & Billing
+                  <Coins size={16} strokeWidth={1.75} /> {t('creditsAndBilling')}
                 </button>
                 <div className="dd-div" />
                 <button className="dd-item danger" onClick={() => { setDdOpen(false); onLogout(); }}>
-                  <Undo2 size={16} strokeWidth={1.75} /> Sign out
+                  <Undo2 size={16} strokeWidth={1.75} /> {t('signOut')}
                 </button>
               </div>
             )}

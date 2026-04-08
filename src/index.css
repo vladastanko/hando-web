@@ -392,6 +392,16 @@ img,svg{display:block}ul,ol{list-style:none}
 .split-view{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;width:100%}
 .split-map{min-width:0}
 .split-list{min-width:0;max-height:560px;overflow-y:auto}
+
+/* Posted Jobs layout — responsive */
+.posted-outer{display:flex;gap:16px;align-items:flex-start}
+.posted-list{flex:1;min-width:0;transition:flex var(--tf)}
+.posted-list.has-panel{flex:0 0 340px}
+.posted-panel{flex:1;min-width:0}
+/* Applicant inner: sidebar + detail */
+.applicant-inner{display:flex;min-height:400px}
+.applicant-sidebar{width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;max-height:520px}
+.applicant-detail{flex:1;padding:20px;overflow-y:auto;max-height:520px}
 .mb-bubble{background:#fff;color:var(--tx);border:2px solid rgba(124,58,255,0.15);border-radius:20px;padding:5px 10px;white-space:nowrap;box-shadow:0 4px 16px rgba(124,58,255,0.15);font-family:'Nunito Sans',sans-serif;display:flex;flex-direction:column;align-items:flex-start;gap:1px;transition:all 0.15s ease;cursor:pointer}
 .mb-bubble:hover{background:var(--brand-grad)!important;color:#fff!important;border-color:#7C3AFF!important;transform:scale(1.08)!important}
 
@@ -659,6 +669,17 @@ img,svg{display:block}ul,ol{list-style:none}
   .split-view{grid-template-columns:1fr;grid-template-rows:auto auto}
   .split-map{order:-1;display:block}
   .split-list{max-height:none;overflow-y:visible}
+  /* Posted Jobs: stack vertically; when panel open, hide list, show panel */
+  .posted-outer{flex-direction:column}
+  .posted-list{flex:1 1 100%;width:100%}
+  .posted-list.has-panel{display:none}
+  .posted-panel{width:100%}
+  .posted-back-btn{display:inline-flex!important}
+  .posted-close-btn{display:none!important}
+  /* Applicant inner: stack sidebar above detail */
+  .applicant-inner{flex-direction:column;min-height:auto}
+  .applicant-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:none;overflow-y:visible}
+  .applicant-detail{max-height:none;overflow-y:visible}
 }
 @media(max-width:640px){
   .two-col,.three-col{grid-template-columns:1fr}

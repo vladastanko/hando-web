@@ -7,6 +7,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { Stars } from '../components/ui/Stars';
 import { Modal } from '../components/ui/Modal';
 import { formatDate, formatDatetime, timeAgo } from '../utils/format';
+import { useLanguage } from '../i18n';
 
 interface Props {
   currentUser: { id: string; email?: string } | null;
@@ -58,6 +59,7 @@ function toIntScores(scores: Record<string, number>): Record<string, number> {
 }
 
 export default function ApplicationsScreen({ currentUser, onMessage, onCreditChange: _cc, onOpenChat }: Props) {
+  const { t } = useLanguage();
   const [myTab,          setMyTab]          = useState<MyTab>('applied');
   const [postedTab,      setPostedTab]      = useState<PostedTab>('open');
   const [myJobs,         setMyJobs]         = useState<Job[]>([]);
@@ -310,13 +312,13 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div className="tabs" style={{ margin: 0 }}>
           <button className={`tab${myTab === 'applied' ? ' on' : ''}`} onClick={() => { setMyTab('applied'); setPanelJob(null); }}>
-            My Applications
+            {t('applied')}
             {myApps.filter(a => a.status === 'pending').length > 0 && (
               <span className="bdg bdg-warn" style={{ marginLeft: 6 }}>{myApps.filter(a => a.status === 'pending').length}</span>
             )}
           </button>
           <button className={`tab${myTab === 'posted' ? ' on' : ''}`} onClick={() => { setMyTab('posted'); }}>
-            Posted Jobs
+            {t('posted')}
             {myJobs.filter(j => j.status === 'open' || j.status === 'in_progress').length > 0 && (
               <span className="bdg bdg-neu" style={{ marginLeft: 6 }}>{myJobs.filter(j => j.status === 'open' || j.status === 'in_progress').length}</span>
             )}
@@ -427,20 +429,30 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
       {/* ── POSTED JOBS ──────────────────────────────────── */}
       {myTab === 'posted' && (
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div className="posted-outer">
 
-          {/* Left: job list */}
-          <div style={{ flex: panelJob ? '0 0 360px' : '1', minWidth: 0, transition: 'flex var(--tf)' }}>
+          {/* Left: job list — hidden on mobile when panel is open */}
+          <div className={`posted-list${panelJob ? ' has-panel' : ''}`}>
+            {/* Mobile back button (visible only when panel open on mobile) */}
+            {panelJob && (
+              <button
+                className="btn btn-g btn-sm posted-back-btn"
+                onClick={() => { setPanelJob(null); setSelectedApp(null); }}
+                style={{ display: 'none', alignItems: 'center', gap: 4, marginBottom: 12 }}
+              >
+                <ChevronLeft size={14} strokeWidth={1.75} /> {t('backToList')}
+              </button>
+            )}
             <div className="tabs" style={{ marginBottom: 16 }}>
-              {(['open', 'in_progress', 'completed'] as PostedTab[]).map(t => {
+              {(['open', 'in_progress', 'completed'] as PostedTab[]).map(tabId => {
                 const count = myJobs.filter(j =>
-                  t === 'open' ? j.status === 'open'
-                  : t === 'in_progress' ? j.status === 'in_progress'
+                  tabId === 'open' ? j.status === 'open'
+                  : tabId === 'in_progress' ? j.status === 'in_progress'
                   : ['completed','cancelled','disputed'].includes(j.status)
                 ).length;
                 return (
-                  <button key={t} className={`tab${postedTab === t ? ' on' : ''}`} onClick={() => setPostedTab(t)}>
-                    {t === 'in_progress' ? 'In Progress' : t === 'open' ? 'Open' : 'Closed'}
+                  <button key={tabId} className={`tab${postedTab === tabId ? ' on' : ''}`} onClick={() => setPostedTab(tabId)}>
+                    {tabId === 'in_progress' ? t('inProgress') : tabId === 'open' ? t('open') : t('closed')}
                     <span className="bdg bdg-neu" style={{ marginLeft: 5 }}>{count}</span>
                   </button>
                 );
@@ -500,7 +512,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
           {/* Right: applicant panel */}
           {panelJob && (
-            <div style={{
+            <div className="posted-panel" style={{
               flex: 1, minWidth: 0,
               background: 'var(--bg-el)', border: '1.5px solid var(--border)',
               borderRadius: 'var(--r-lg)', overflow: 'hidden',
@@ -536,7 +548,8 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <button className="btn btn-g btn-sm" onClick={() => { setPanelJob(null); setSelectedApp(null); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} strokeWidth={1.75} /></button>
+                  <button className="btn btn-g btn-sm posted-back-btn" onClick={() => { setPanelJob(null); setSelectedApp(null); }} style={{ display: 'none', alignItems: 'center', gap: 4 }}><ChevronLeft size={14} strokeWidth={1.75} /> {t('backToList')}</button>
+                  <button className="btn btn-g btn-sm posted-close-btn" onClick={() => { setPanelJob(null); setSelectedApp(null); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} strokeWidth={1.75} /></button>
                   {(panelJob.status === 'open' || panelJob.status === 'in_progress') && (
                     <button className="btn btn-s btn-sm" onClick={() => openEdit(panelJob)}>Edit</button>
                   )}
@@ -581,9 +594,9 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                   <span className="empty-s">Share your job to attract workers.</span>
                 </div>
               ) : (
-                <div style={{ display: 'flex', minHeight: 400 }}>
+                <div className="applicant-inner">
                   {/* List */}
-                  <div style={{ width: 260, borderRight: '1px solid var(--border)', overflowY: 'auto', maxHeight: 520 }}>
+                  <div className="applicant-sidebar">
                     {sortedApplicants.map(app => {
                       const isSelected = selectedApp?.id === app.id;
                       const statusColor = STATUS_COLORS[app.status] ?? 'var(--tx-3)';
@@ -628,7 +641,7 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
 
                   {/* Detail */}
                   {selectedApp ? (
-                    <div style={{ flex: 1, padding: '20px', overflowY: 'auto', maxHeight: 520 }}>
+                    <div className="applicant-detail">
                       <div style={{ display: 'flex', gap: 14, marginBottom: 20, alignItems: 'flex-start' }}>
                         <Avatar name={selectedApp.worker?.full_name ?? '?'} url={selectedApp.worker?.avatar_url} size="lg" />
                         <div style={{ flex: 1 }}>
@@ -688,21 +701,20 @@ export default function ApplicationsScreen({ currentUser, onMessage, onCreditCha
                       </div>
 
                       {selectedApp.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: 10 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <button
                             className="btn btn-ok btn-fw"
                             onClick={() => handleAccept(selectedApp.id, selectedApp.job_id)}
                             disabled={actionLoading === selectedApp.id}
                           >
-                            {actionLoading === selectedApp.id ? 'Accepting...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Check size={14} strokeWidth={2} /> Accept applicant</span>}
+                            {actionLoading === selectedApp.id ? t('accepting') : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Check size={14} strokeWidth={2} /> {t('acceptApplicant')}</span>}
                           </button>
                           <button
-                            className="btn btn-d"
-                            style={{ flexShrink: 0 }}
+                            className="btn btn-d btn-fw"
                             onClick={() => { handleReject(selectedApp.id); setSelectedApp({ ...selectedApp, status: 'rejected' }); }}
                             disabled={actionLoading === selectedApp.id}
                           >
-                            Decline
+                            {t('decline')}
                           </button>
                         </div>
                       )}
