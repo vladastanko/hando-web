@@ -142,10 +142,28 @@ export default function App() {
     setView('applications');
   }, [user, loadJobs, loadCredits]);
 
-  // ─── Admin gate ───────────────────────────────────────────────────────
-  const isAdminMode = new URLSearchParams(window.location.search).get('admin') === '1';
-  if (isAdminMode) {
-    return <AdminScreen onExit={() => window.history.replaceState({}, '', window.location.pathname)} />;
+  // ─── Admin route (/admin path) ────────────────────────────────────────
+  const isAdminPath = window.location.pathname === '/admin';
+  if (isAdminPath) {
+    if (!user) return <AuthScreen onSuccess={setUser} />;
+    if (!profile) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a', color: '#888' }}>
+          Loading…
+        </div>
+      );
+    }
+    if (!profile.is_admin) {
+      window.history.replaceState({}, '', '/');
+      return <AuthScreen onSuccess={setUser} />;
+    }
+    return (
+      <AdminScreen
+        onExit={() => { window.history.replaceState({}, '', '/'); window.location.reload(); }}
+        userId={user.id}
+        userProfile={profile}
+      />
+    );
   }
 
   // ─── Auth gate ────────────────────────────────────────────────────────

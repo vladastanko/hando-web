@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect, type ChangeEvent } from 'react';
-import { MapPin, User, Mail, Camera, Hourglass, Star, Check, AlertTriangle, Phone, CreditCard, Gift } from 'lucide-react';
-import type { Profile, Rating } from '../types';
-import { profiles, ratings as ratingsApi } from '../lib/supabase';
+import React, { useState, useCallback, useEffect, useRef, type ChangeEvent } from 'react';
+import { MapPin, User, Mail, Camera, Hourglass, Star, Check, AlertTriangle, Phone, CreditCard, Gift, MessageSquare, Send, Plus } from 'lucide-react';
+import type { Profile, Rating, SupportTicket, SupportMessage } from '../types';
+import { profiles, ratings as ratingsApi, supabase } from '../lib/supabase';
 import { Avatar } from '../components/ui/Avatar';
 import { Stars } from '../components/ui/Stars';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -16,7 +16,7 @@ interface Props {
   onReferralClick?: () => void;
 }
 
-type ProfileTab = 'overview' | 'edit' | 'ratings' | 'verification';
+type ProfileTab = 'overview' | 'edit' | 'ratings' | 'verification' | 'support';
 type RatingsTab = 'received' | 'given';
 
 export default function ProfileScreen({ currentUser, profile, onProfileUpdated, onMessage, onReferralClick }: Props) {
@@ -26,6 +26,19 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   const [ratingsReceived, setRatingsReceived] = useState<Rating[]>([]);
   const [ratingsGiven, setRatingsGiven] = useState<Rating[]>([]);
   const [loadingRatings, setLoadingRatings] = useState(false);
+
+  // Support
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(null);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [newSubject, setNewSubject] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [creatingTicket, setCreatingTicket] = useState(false);
+  const [showNewTicket, setShowNewTicket] = useState(false);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Edit form
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
@@ -69,6 +82,84 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
   useEffect(() => {
     loadRatings();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Support: load tickets
+  const loadTickets = useCallback(async () => {
+    setLoadingTickets(true);
+    const { data } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('updated_at', { ascending: false });
+    setTickets(data ?? []);
+    setLoadingTickets(false);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    if (tab === 'support') loadTickets();
+  }, [tab, loadTickets]);
+
+  // Support: load messages for active ticket + real-time sub
+  useEffect(() => {
+    if (!activeTicket) return;
+    supabase
+      .from('support_messages')
+      .select('*')
+      .eq('ticket_id', activeTicket.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setMessages(data ?? []);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      });
+
+    const ch = supabase
+      .channel(`support_msg_${activeTicket.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${activeTicket.id}` },
+        (payload) => {
+          setMessages(prev => [...prev, payload.new as SupportMessage]);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [activeTicket]);
+
+  const handleCreateTicket = async () => {
+    if (!newSubject.trim() || !newMessage.trim()) return;
+    setCreatingTicket(true);
+    const { data: ticket } = await supabase
+      .from('support_tickets')
+      .insert({ user_id: currentUser.id, subject: newSubject.trim(), status: 'open' })
+      .select()
+      .single();
+    if (ticket) {
+      await supabase.from('support_messages').insert({
+        ticket_id: ticket.id,
+        sender_id: currentUser.id,
+        message: newMessage.trim(),
+        is_admin: false,
+      });
+      setNewSubject('');
+      setNewMessage('');
+      setShowNewTicket(false);
+      await loadTickets();
+      setActiveTicket(ticket);
+    }
+    setCreatingTicket(false);
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !activeTicket) return;
+    setSendingReply(true);
+    await supabase.from('support_messages').insert({
+      ticket_id: activeTicket.id,
+      sender_id: currentUser.id,
+      message: replyText.trim(),
+      is_admin: false,
+    });
+    setReplyText('');
+    setSendingReply(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -275,12 +366,13 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
 
       {/* ── Tabs ─────────────────────────────────────── */}
       <div className="tabs" style={{ marginBottom: 24 }}>
-        {(['overview', 'edit', 'ratings', 'verification'] as ProfileTab[]).map(tabKey => (
+        {(['overview', 'edit', 'ratings', 'verification', 'support'] as ProfileTab[]).map(tabKey => (
           <button key={tabKey} className={`tab${tab === tabKey ? ' on' : ''}`} onClick={() => setTab(tabKey)}>
             {tabKey === 'overview' ? t('overview')
               : tabKey === 'edit' ? t('editProfile')
               : tabKey === 'ratings' ? `${t('ratings')} (${ratingsReceived.length})`
-              : t('verification')}
+              : tabKey === 'verification' ? t('verification')
+              : t('support')}
           </button>
         ))}
       </div>
@@ -628,6 +720,111 @@ export default function ProfileScreen({ currentUser, profile, onProfileUpdated, 
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* ── SUPPORT ──────────────────────────────────── */}
+      {tab === 'support' && (
+        <div>
+          {/* Ticket conversation view */}
+          {activeTicket ? (
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--brd)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button className="btn btn-g btn-sm" onClick={() => { setActiveTicket(null); setMessages([]); }}>←</button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{activeTicket.subject}</div>
+                  <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2, textTransform: 'capitalize' }}>{activeTicket.status}</div>
+                </div>
+              </div>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto' }}>
+                {messages.map(msg => (
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.is_admin ? 'flex-start' : 'flex-end' }}>
+                    <div style={{
+                      background: msg.is_admin ? 'var(--card-2)' : 'var(--accent)',
+                      color: msg.is_admin ? 'var(--tx-1)' : '#fff',
+                      borderRadius: 12,
+                      padding: '8px 12px',
+                      maxWidth: '80%',
+                      fontSize: '.9375rem',
+                    }}>
+                      {msg.message}
+                    </div>
+                    <div style={{ fontSize: '.6875rem', color: 'var(--tx-3)', marginTop: 3 }}>{timeAgo(msg.created_at)}</div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+              {activeTicket.status !== 'resolved' && activeTicket.status !== 'closed' && (
+                <div style={{ padding: '10px 12px', borderTop: '1px solid var(--brd)', display: 'flex', gap: 8 }}>
+                  <input
+                    className="inp"
+                    style={{ flex: 1, margin: 0 }}
+                    placeholder={t('typeReply')}
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }}
+                  />
+                  <button className="btn btn-p btn-sm" onClick={handleSendReply} disabled={sendingReply || !replyText.trim()}>
+                    <Send size={14} strokeWidth={1.75} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* New ticket form */}
+              {showNewTicket ? (
+                <div className="card" style={{ padding: '16px', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 12 }}>{t('newTicket')}</div>
+                  <div className="fld" style={{ marginBottom: 10 }}>
+                    <label className="flb">{t('ticketSubject')}</label>
+                    <input className="inp" placeholder={t('ticketSubjectPh')} value={newSubject} onChange={e => setNewSubject(e.target.value)} />
+                  </div>
+                  <div className="fld" style={{ marginBottom: 12 }}>
+                    <label className="flb">{t('ticketMessage')}</label>
+                    <textarea className="txta" rows={4} placeholder={t('ticketMessagePh')} value={newMessage} onChange={e => setNewMessage(e.target.value)} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-g btn-sm" onClick={() => setShowNewTicket(false)}>✕</button>
+                    <button className="btn btn-p btn-sm" style={{ flex: 1 }} onClick={handleCreateTicket} disabled={creatingTicket || !newSubject.trim() || !newMessage.trim()}>
+                      {creatingTicket ? '…' : t('submitTicket')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-p btn-sm" style={{ width: '100%', marginBottom: 16 }} onClick={() => setShowNewTicket(true)}>
+                  <Plus size={14} strokeWidth={1.75} /> {t('newTicket')}
+                </button>
+              )}
+
+              {/* Ticket list */}
+              {loadingTickets ? (
+                <div style={{ textAlign: 'center', padding: 32, color: 'var(--tx-2)' }}>…</div>
+              ) : tickets.length === 0 ? (
+                <div className="card" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                  <MessageSquare size={32} strokeWidth={1.25} style={{ color: 'var(--tx-3)', marginBottom: 8 }} />
+                  <div style={{ color: 'var(--tx-2)', fontSize: '.9375rem' }}>{t('noTickets')}</div>
+                </div>
+              ) : (
+                tickets.map(ticket => (
+                  <div key={ticket.id} className="card" style={{ padding: '14px 16px', marginBottom: 10, cursor: 'pointer' }}
+                    onClick={() => setActiveTicket(ticket)}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontWeight: 600, fontSize: '.9375rem' }}>{ticket.subject}</div>
+                      <span style={{
+                        fontSize: '.6875rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600,
+                        background: ticket.status === 'open' ? 'var(--warn-bg)' : ticket.status === 'resolved' ? 'var(--ok-bg)' : 'var(--card-2)',
+                        color: ticket.status === 'open' ? 'var(--warn)' : ticket.status === 'resolved' ? 'var(--ok)' : 'var(--tx-2)',
+                      }}>
+                        {ticket.status === 'open' ? t('ticketOpen') : ticket.status === 'in_progress' ? t('ticketInProgress') : ticket.status === 'resolved' ? t('ticketResolved') : t('ticketClosed')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '.8125rem', color: 'var(--tx-2)', marginTop: 4 }}>{timeAgo(ticket.updated_at)}</div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

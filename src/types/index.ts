@@ -36,10 +36,32 @@ export interface Profile {
   verification_status: VerificationStatus;
   is_phone_verified: boolean;
   is_email_verified: boolean;
+  is_admin: boolean;
   location?: { lat: number; lng: number };
   referral_code?: string;
+  verification_rejection_reason?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  user_id: string;
+  subject: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  created_at: string;
+  updated_at: string;
+  user?: { full_name: string; email: string; avatar_url?: string };
+  last_message?: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  message: string;
+  is_admin: boolean;
+  created_at: string;
 }
 
 export interface Referral {

@@ -3,6 +3,7 @@ import { MapPin, Coins } from 'lucide-react';
 import { jobs } from '../lib/supabase';
 import type { Category } from '../types';
 import type { UserLocation } from '../hooks/useLocation';
+import { useLanguage } from '../i18n';
 
 interface Props {
   categories: Category[];
@@ -192,6 +193,7 @@ function TimePicker24h({ value, onChange }: { value: string; onChange: (v: strin
 
 // ─────────────────────────────────────────────────────────────
 export default function PostJobScreen({ categories, creditBalance, userLocation, onRequestLocation, onCreated, onGoToCredits, onMessage }: Props) {
+  const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -220,14 +222,14 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
     : EXTRA_CATEGORIES.map((c, i) => ({ id: String(i), ...c, color: '#5b5ef4' }));
 
   const handleCreate = useCallback(async () => {
-    if (!title.trim()) { onMessage('Please enter a job title.', 'error'); return; }
-    if (!description.trim()) { onMessage('Please describe the work.', 'error'); return; }
-    if (!categoryId) { onMessage('Please select a category.', 'error'); return; }
-    if (!city.trim()) { onMessage('Please enter a city.', 'error'); return; }
-    if (!address.trim()) { onMessage('Please enter an address.', 'error'); return; }
-    if (!payPerWorker || Number(payPerWorker) < 1) { onMessage('Please enter pay per worker.', 'error'); return; }
-    if (!scheduledDate) { onMessage('Please select a date.', 'error'); return; }
-    if (!canPost) { onMessage('Insufficient credits.', 'error'); return; }
+    if (!title.trim()) { onMessage(t('enterJobTitle'), 'error'); return; }
+    if (!description.trim()) { onMessage(t('enterDescription'), 'error'); return; }
+    if (!categoryId) { onMessage(t('selectCategoryErr'), 'error'); return; }
+    if (!city.trim()) { onMessage(t('enterCity'), 'error'); return; }
+    if (!address.trim()) { onMessage(t('enterAddress'), 'error'); return; }
+    if (!payPerWorker || Number(payPerWorker) < 1) { onMessage(t('enterPayPerWorker'), 'error'); return; }
+    if (!scheduledDate) { onMessage(t('selectDate'), 'error'); return; }
+    if (!canPost) { onMessage(t('insufficientCr'), 'error'); return; }
 
     setLoading(true);
     const res = await jobs.create({
@@ -247,7 +249,7 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
     setLoading(false);
 
     if (res.error) { onMessage(res.error, 'error'); return; }
-    onMessage('Job posted successfully! −10 credits deducted.', 'success');
+    onMessage(t('jobPostedOk'), 'success');
     setTitle(''); setDescription(''); setCategoryId('');
     setCity(''); setAddress(''); setPayPerWorker('');
     setCrewSize('1'); setScheduledDate(''); setScheduledTime('09:00'); setDurationHours('2');
@@ -257,27 +259,27 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
   return (
     <div className="pg-n">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', marginBottom: 6 }}>Post a Job</h1>
-        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>Describe the work and find skilled help nearby.</p>
+        <h1 style={{ fontSize: '1.375rem', fontWeight: 800, letterSpacing: '-.025em', marginBottom: 6 }}>{t('postAJob')}</h1>
+        <p style={{ fontSize: '.9375rem', color: 'var(--tx-2)' }}>{t('postJobSubtitle')}</p>
       </div>
 
       <div className="card">
         {/* 1 – Details */}
         <div className="psect">
-          <div className="psect-ttl"><div className="psect-n">1</div>Job Details</div>
+          <div className="psect-ttl"><div className="psect-n">1</div>{t('jobDetails')}</div>
           <div className="frow" style={{ gap: 16 }}>
             <div className="fld">
-              <label className="flb">Job title *</label>
-              <input className="inp" placeholder="e.g. Help moving furniture to 3rd floor" value={title} onChange={e => setTitle(e.target.value)} />
+              <label className="flb">{t('jobTitle')} *</label>
+              <input className="inp" placeholder={t('jobTitlePh')} value={title} onChange={e => setTitle(e.target.value)} />
             </div>
             <div className="fld">
-              <label className="flb">Description *</label>
-              <textarea className="txta" placeholder="Describe what needs to be done..." value={description} onChange={e => setDescription(e.target.value)} rows={4} />
+              <label className="flb">{t('description')} *</label>
+              <textarea className="txta" placeholder={t('descriptionPh')} value={description} onChange={e => setDescription(e.target.value)} rows={4} />
             </div>
             <div className="fld">
-              <label className="flb">Category *</label>
+              <label className="flb">{t('category')} *</label>
               <select className="sel" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-                <option value="">Select a category</option>
+                <option value="">{t('selectCategory')}</option>
                 {displayCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
                 ))}
@@ -288,18 +290,18 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
 
         {/* 2 – When */}
         <div className="psect">
-          <div className="psect-ttl"><div className="psect-n">2</div>When</div>
+          <div className="psect-ttl"><div className="psect-n">2</div>{t('when')}</div>
           <div className="frow frow-3">
             <div className="fld">
-              <label className="flb">Date *</label>
+              <label className="flb">{t('date')} *</label>
               <input className="inp" type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
             </div>
             <div className="fld">
-              <label className="flb">Start time</label>
+              <label className="flb">{t('startTime')}</label>
               <TimePicker24h value={scheduledTime} onChange={setScheduledTime} />
             </div>
             <div className="fld">
-              <label className="flb">Duration</label>
+              <label className="flb">{t('duration')}</label>
               <select className="sel" value={durationHours} onChange={e => setDurationHours(e.target.value)}>
                 {[1,2,3,4,5,6,8,10,12].map(h => (
                   <option key={h} value={h}>{h}h</option>
@@ -311,14 +313,14 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
 
         {/* 3 – Location */}
         <div className="psect">
-          <div className="psect-ttl"><div className="psect-n">3</div>Location</div>
+          <div className="psect-ttl"><div className="psect-n">3</div>{t('location')}</div>
           <div className="frow frow-2" style={{ marginBottom: 14 }}>
             <div className="fld">
-              <label className="flb">City *</label>
+              <label className="flb">{t('city')} *</label>
               <LocationAutocomplete value={city} onChange={setCity} placeholder="Novi Sad" type="city" />
             </div>
             <div className="fld">
-              <label className="flb">Street / Area *</label>
+              <label className="flb">{t('streetArea')} *</label>
               <LocationAutocomplete
                 value={address}
                 onChange={v => { setAddress(v); setAddressLat(null); setAddressLng(null); }}
@@ -335,40 +337,40 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
               <div>
                 <div style={{ fontSize: '.875rem', fontWeight: 600 }}>
                   {addressLat != null
-                    ? `${address} (geocoded)`
-                    : userLocation?.place?.display ?? (userLocation ? 'Location captured' : 'No location set')}
+                    ? `${address} (${t('geocodedLabel')})`
+                    : userLocation?.place?.display ?? (userLocation ? t('locationCaptured') : t('noLocationSet'))}
                 </div>
                 <div style={{ fontSize: '.75rem', color: 'var(--tx-2)', marginTop: 2 }}>
                   {addressLat != null
-                    ? 'Map pin placed at selected address'
-                    : userLocation ? 'Select address above for precise pin placement' : 'Allow location for accurate map placement'}
+                    ? t('mapPinPlaced')
+                    : userLocation ? t('selectAddrPin') : t('allowLocMap')}
                 </div>
               </div>
             </div>
             <button className="btn btn-s btn-sm" onClick={onRequestLocation}>
-              {userLocation ? 'Update GPS' : 'Use my location'}
+              {userLocation ? t('updateGps') : t('useMyLocation')}
             </button>
           </div>
         </div>
 
         {/* 4 – Pay */}
         <div className="psect">
-          <div className="psect-ttl"><div className="psect-n">4</div>Pay & Crew</div>
+          <div className="psect-ttl"><div className="psect-n">4</div>{t('payAndCrew')}</div>
           <div className="frow frow-2">
             <div className="fld">
-              <label className="flb">Pay per worker (RSD) *</label>
+              <label className="flb">{t('payPerWorkerRsd')} *</label>
               <input className="inp" type="number" placeholder="3000" min={1} value={payPerWorker} onChange={e => setPayPerWorker(e.target.value)} />
             </div>
             <div className="fld">
-              <label className="flb">Workers needed</label>
+              <label className="flb">{t('workersNeeded')}</label>
               <select className="sel" value={crewSize} onChange={e => setCrewSize(e.target.value)}>
-                {[1,2,3,4,5,6,8,10].map(n => <option key={n} value={n}>{n} worker{n > 1 ? 's' : ''}</option>)}
+                {[1,2,3,4,5,6,8,10].map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
           </div>
           {totalPay > 0 && (
             <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg-ov)', border: '1px solid var(--border)', borderRadius: 'var(--r)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>Total payout</span>
+              <span style={{ fontSize: '.8125rem', color: 'var(--tx-2)' }}>{t('totalPayout')}</span>
               <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>{totalPay.toLocaleString()} RSD</span>
             </div>
           )}
@@ -379,13 +381,13 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
           <div className="cred-notice" style={{ marginBottom: !canPost ? 10 : 16 }}>
             <Coins size={18} strokeWidth={1.75} />
             <span>
-              Posting costs <strong>10 credits</strong>. Your balance: <strong>{creditBalance} credits</strong>.
-              {!canPost && <span style={{ color: 'var(--err)', marginLeft: 6 }}>Insufficient credits.</span>}
+              {t('postingCostsMsg').replace('{n}', '10').replace('{b}', String(creditBalance))}
+              {!canPost && <span style={{ color: 'var(--err)', marginLeft: 6 }}>{t('insufficientCr')}</span>}
             </span>
           </div>
           {!canPost && (
             <button className="btn btn-p btn-fw" onClick={onGoToCredits} style={{ marginBottom: 10, display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-              <Coins size={16} strokeWidth={1.75} /> Buy Credits
+              <Coins size={16} strokeWidth={1.75} /> {t('buyCredits')}
             </button>
           )}
           <button
@@ -394,7 +396,7 @@ export default function PostJobScreen({ categories, creditBalance, userLocation,
             disabled={loading || !canPost}
             style={!canPost ? { background: 'var(--bg-ov)', color: 'var(--tx-3)', border: '1px solid var(--border)', cursor: 'not-allowed' } : undefined}
           >
-            {loading ? 'Posting...' : 'Post Job — 10 credits'}
+            {loading ? t('postingBtn') : t('postJobBtn')}
           </button>
         </div>
       </div>
