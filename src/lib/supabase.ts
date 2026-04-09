@@ -15,7 +15,7 @@ import type {
 } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://wutewsngkxqftaugjdaz.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'sb_publishable_wpUAdz6wA4FslYOtedknWw_oimdoLvL';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dGV3c25na3hxZnRhdWdqZGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjczNzUsImV4cCI6MjA4ODg0MzM3NX0._Rv_-exm504n7t74NQFZcjF6Z58J-jGMAv_4WQu7foU';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
