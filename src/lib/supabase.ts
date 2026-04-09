@@ -14,8 +14,8 @@ import type {
   ApiResponse,
 } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://wutewsngkxqftaugjdaz.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'sb_publishable_wpUAdz6wA4FslYOtedknWw_oimdoLvL';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
